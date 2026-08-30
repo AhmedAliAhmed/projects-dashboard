@@ -1,26 +1,1617 @@
-import streamlit as st
-import streamlit.components.v1 as components
-
-# ضبط إعدادات الصفحة
-st.set_page_config(
-    page_title="منظومة تقييم وتدقيق المدارس",
-    page_icon="🏫",
-    layout="wide",
-    initial_sidebar_state="collapsed"
-)
-
-# إخفاء الهيدر والفوتر الافتراضي لـ Streamlit
-st.markdown("""
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>منظومة تقييم وتدقيق المدارس - TBC & OMRAN</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Cairo -->
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
     <style>
-        #MainMenu {visibility: hidden;}
-        footer {visibility: hidden;}
-        header {visibility: hidden;}
-        .block-container {padding: 0rem !important;}
+        body { font-family: 'Cairo', sans-serif; }
+        
+        /* Custom Premium Select Dropdown Styling */
+        select {
+            cursor: pointer;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2064748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2.5' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: left 0.75rem center;
+            background-size: 1rem;
+            padding-left: 2.25rem !important;
+        }
+
+        select:hover {
+            border-color: #0d9488 !important;
+            background-color: #f0fdf4 !important;
+            box-shadow: 0 4px 14px -2px rgba(13, 148, 136, 0.2) !important;
+            transform: translateY(-1.5px);
+        }
+
+        select:focus {
+            outline: none !important;
+            border-color: #059669 !important;
+            box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.2) !important;
+            background-color: #ffffff !important;
+        }
+
+        select option {
+            padding: 10px;
+            font-weight: 600;
+            font-family: 'Cairo', sans-serif;
+            background-color: #ffffff;
+            color: #1e293b;
+        }
+
+        /* Status Colors & Interactive Hover Effects */
+        .option-green { background-color: #ecfdf5 !important; color: #065f46 !important; border-color: #10b981 !important; font-weight: 700; }
+        .option-green:hover { background-color: #d1fae5 !important; border-color: #059669 !important; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.25) !important; }
+
+        .option-yellow { background-color: #fefce8 !important; color: #854d0e !important; border-color: #f59e0b !important; font-weight: 700; }
+        .option-yellow:hover { background-color: #fef08a !important; border-color: #d97706 !important; box-shadow: 0 4px 14px rgba(245, 158, 11, 0.25) !important; }
+
+        .option-red { background-color: #fff1f2 !important; color: #9f1239 !important; border-color: #f43f5e !important; font-weight: 700; }
+        .option-red:hover { background-color: #ffe4e6 !important; border-color: #e11d48 !important; box-shadow: 0 4px 14px rgba(244, 63, 94, 0.25) !important; }
+
+        .option-na { background-color: #f8fafc !important; color: #64748b !important; border-color: #cbd5e1 !important; font-style: italic; }
+        .option-na:hover { background-color: #f1f5f9 !important; border-color: #94a3b8 !important; box-shadow: 0 4px 12px rgba(148, 163, 184, 0.2) !important; }
+
+        @media print {
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+            body { background: white; color: black; }
+            .card-box { box-shadow: none !important; border: 1px solid #ddd !important; }
+        }
     </style>
-""", unsafe_allow_html=True)
+</head>
+<body class="bg-slate-100 min-h-screen text-slate-800 flex flex-col justify-between">
 
-# قراءة وعرض ملف الـ HTML
-with open("index.html", "r", encoding="utf-8") as f:
-    html_content = f.read()
+    <!-- Top Header with Vector Logos -->
+    <header class="bg-white border-b border-slate-200 shadow-sm py-4 px-6 no-print">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            
+            <!-- Logo 1: TBC SVG -->
+            <div class="flex items-center gap-3">
+                <svg viewBox="0 0 300 120" class="h-14 md:h-16 w-auto" xmlns="http://www.w3.org/2000/svg">
+                    <path fill="#00a8b5" d="M20 25 h55 v15 h-20 v45 h-15 v-45 h-20 z"/>
+                    <path fill="#00a8b5" d="M85 25 h35 c12 0 20 6 20 15 c0 6 -4 11 -10 13 c8 2 12 8 12 16 c0 11 -9 16 -22 16 h-35 z M100 38 v14 h18 c5 0 9 -2 9 -7 s-4 -7 -9 -7 z M100 62 v13 h20 c6 0 10 -3 10 -7 s-4 -6 -10 -6 z"/>
+                    <polygon points="150,55 165,42 150,70 135,58" fill="#f5b800"/>
+                    <path fill="#00a8b5" d="M185 25 c-20 0 -30 14 -30 30 s10 30 30 30 c15 0 24 -8 26 -18 h-16 c-2 4 -5 7 -10 7 c-9 0 -14 -7 -14 -19 s5 -19 14 -19 c5 0 8 3 10 7 h16 c-2 -10 -11 -18 -26 -18 z"/>
+                    <text x="150" y="108" font-family="'Cairo', sans-serif" font-weight="700" font-size="19" fill="#00a8b5" text-anchor="middle">شركة تطوير للمباني</text>
+                </svg>
+            </div>
 
-components.html(html_content, height=950, scrolling=True)
+            <!-- Title & Actions Header Buttons -->
+            <div class="text-center">
+                <h1 class="text-xl md:text-2xl font-black text-slate-900 flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-school-flag text-teal-600"></i>
+                    منظومة تقييم وتدقيق المدارس
+                </h1>
+                <p class="text-slate-500 text-xs mt-1">برنامج التقييم الميداني وحساب المؤشرات الفنية للهياكل والأنظمة</p>
+                
+                <div class="flex flex-wrap justify-center gap-2 mt-3">
+                    <button onclick="saveCurrentSchoolToRegistry()" class="bg-blue-600 hover:bg-blue-700 text-white font-extrabold px-3.5 py-1.5 rounded-xl text-xs transition shadow-md flex items-center gap-1.5">
+                        <i class="fa-solid fa-floppy-disk"></i> حفظ التقييم في السجل
+                    </button>
+                    <button onclick="startNewSchoolAssessment()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold px-3.5 py-1.5 rounded-xl text-xs transition shadow-md flex items-center gap-1.5">
+                        <i class="fa-solid fa-square-plus"></i> تقييم مدرسة جديدة
+                    </button>
+                    <button onclick="fillDemoData()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold px-3.5 py-1.5 rounded-xl text-xs transition shadow-sm flex items-center gap-1.5">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> تعبئة تجريبية
+                    </button>
+                    <button onclick="exportJSON()" class="bg-slate-800 hover:bg-slate-900 text-white font-bold px-3.5 py-1.5 rounded-xl text-xs transition shadow-sm flex items-center gap-1.5">
+                        <i class="fa-solid fa-download"></i> تصدير (JSON)
+                    </button>
+                    <button onclick="window.print()" class="bg-slate-700 hover:bg-slate-800 text-white font-bold px-3.5 py-1.5 rounded-xl text-xs transition shadow-sm flex items-center gap-1.5">
+                        <i class="fa-solid fa-print"></i> طباعة التقرير
+                    </button>
+                </div>
+            </div>
+
+            <!-- Logo 2: OMRAN High-Res Vector SVG matching uploaded image -->
+            <div class="flex items-center gap-3">
+                <svg viewBox="0 0 300 130" class="h-14 md:h-16 w-auto" xmlns="http://www.w3.org/2000/svg">
+                    <text x="150" y="42" font-family="'Segoe UI', 'Montserrat', Arial, sans-serif" font-weight="900" font-size="44" fill="#2d2d2d" text-anchor="middle" letter-spacing="2">OMRAN</text>
+                    <g transform="translate(25, 52)">
+                        <rect x="0" y="4" width="34" height="11" fill="#008542" rx="1"/>
+                        <text x="44" y="14" font-family="'Segoe UI', 'Montserrat', Arial, sans-serif" font-weight="700" font-size="13" fill="#2d2d2d" letter-spacing="2">ADVANCED CENTER</text>
+                    </g>
+                    <text x="150" y="112" font-family="'Cairo', sans-serif" font-weight="800" font-size="22" fill="#2d2d2d" text-anchor="middle">مركز العمران المتقدم</text>
+                </svg>
+            </div>
+
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-7xl mx-auto px-4 py-6 w-full flex-grow">
+
+        <!-- Navigation Tabs Bar with Side Grouping -->
+        <div class="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-3 border-b-2 border-slate-300 mb-6 no-print pb-3">
+            <div class="flex flex-wrap items-center gap-2">
+                <button onclick="switchTab('master')" id="tabBtn_master" class="tab-btn px-4 py-2.5 font-extrabold text-xs md:text-sm rounded-xl transition whitespace-nowrap bg-slate-900 text-amber-400 shadow-md flex items-center gap-2">
+                    <i class="fa-solid fa-chart-line"></i> اللوحة الرئيسية
+                </button>
+                <button onclick="switchTab('analytics')" id="tabBtn_analytics" class="tab-btn px-4 py-2.5 font-extrabold text-xs md:text-sm rounded-xl transition whitespace-nowrap bg-indigo-900 text-white shadow-md flex items-center gap-2">
+                    <i class="fa-solid fa-list-check"></i> 📋 قائمة المدارس
+                </button>
+                <button onclick="switchTab('registry')" id="tabBtn_registry" class="tab-btn px-4 py-2.5 font-extrabold text-xs md:text-sm rounded-xl transition whitespace-nowrap bg-emerald-800 text-white shadow-md flex items-center gap-2">
+                    <i class="fa-solid fa-landmark"></i> سجل المدارس
+                </button>
+            </div>
+
+            <div class="hidden lg:block h-7 w-px bg-slate-300"></div>
+
+            <div class="flex overflow-x-auto items-center gap-1.5 pb-1 lg:pb-0">
+                <button onclick="switchTab(0)" id="tabBtn_0" class="tab-btn px-3.5 py-2.5 font-bold text-xs rounded-xl transition whitespace-nowrap text-blue-900 bg-blue-100 hover:bg-blue-200">
+                    1. الإنشائي (15%)
+                </button>
+                <button onclick="switchTab(1)" id="tabBtn_1" class="tab-btn px-3.5 py-2.5 font-bold text-xs rounded-xl transition whitespace-nowrap text-purple-900 bg-purple-100 hover:bg-purple-200">
+                    2. المعماري (20%)
+                </button>
+                <button onclick="switchTab(2)" id="tabBtn_2" class="tab-btn px-3.5 py-2.5 font-bold text-xs rounded-xl transition whitespace-nowrap text-amber-900 bg-amber-100 hover:bg-amber-200">
+                    3. الكهربائي (10%)
+                </button>
+                <button onclick="switchTab(3)" id="tabBtn_3" class="tab-btn px-3.5 py-2.5 font-bold text-xs rounded-xl transition whitespace-nowrap text-teal-900 bg-teal-100 hover:bg-teal-200">
+                    4. الميكانيكي (25%)
+                </button>
+                <button onclick="switchTab(4)" id="tabBtn_4" class="tab-btn px-3.5 py-2.5 font-bold text-xs rounded-xl transition whitespace-nowrap text-rose-900 bg-rose-100 hover:bg-rose-200">
+                    5. الصحة والسلامة (30%)
+                </button>
+            </div>
+        </div>
+
+        <!-- Master Dashboard Page -->
+        <div id="section_master" class="tab-content">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mb-6">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+                    <h3 class="text-base font-extrabold text-slate-800 flex items-center gap-2">
+                        <i class="fa-solid fa-file-pen text-blue-600"></i> بيانات المدرسة والفحص الميداني
+                    </h3>
+                    <div class="flex flex-wrap gap-2">
+                        <button onclick="saveCurrentSchoolToRegistry()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-3.5 py-1.5 rounded-xl text-xs transition flex items-center gap-1.5 shadow-sm">
+                            <i class="fa-solid fa-floppy-disk"></i> حفظ التقييم في السجل
+                        </button>
+                        <button onclick="startNewSchoolAssessment()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3.5 py-1.5 rounded-xl text-xs transition flex items-center gap-1.5 shadow-sm">
+                            <i class="fa-solid fa-square-plus"></i> تقييم مدرسة جديدة
+                        </button>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">اسم المدرسة</label>
+                        <input type="text" id="schoolName" placeholder="أدخل اسم المدرسة..." class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">المنطقة / المدينة</label>
+                        <input type="text" id="schoolLocation" placeholder="أدخل الموقع..." class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">اسم المهندس المقيّم</label>
+                        <input type="text" id="evaluatorName" placeholder="أدخل اسم المقيّم..." class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Total Score Card -->
+            <div class="bg-gradient-to-r from-slate-900 to-slate-800 text-white p-6 rounded-2xl shadow-lg mb-8">
+                <div class="flex flex-col lg:flex-row justify-between items-center gap-6">
+                    <div>
+                        <span class="text-xs uppercase font-extrabold tracking-widest text-amber-400 bg-amber-400/10 px-3 py-1 rounded-full border border-amber-400/20">
+                            النتيجة الإجمالية الشاملة
+                        </span>
+                        <h2 class="text-3xl font-black mt-2">تقييم حالة المدرسة</h2>
+                        <p class="text-slate-300 text-xs mt-1">يتم الحساب تلقائياً بناءً على الأنظمة الفعّالة مع استبعاد العناصر التي لا تنطبق (N/A)</p>
+                    </div>
+                    <div class="text-center lg:text-left flex items-center gap-4">
+                        <div>
+                            <div id="masterScoreText" class="text-5xl font-black text-amber-400">0.00%</div>
+                            <div id="masterBadge" class="mt-2 inline-block px-4 py-1 rounded-full text-xs font-black bg-slate-800 text-slate-300 border border-slate-700">
+                                في انتظار التقييم
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="w-full bg-slate-700 h-3 rounded-full overflow-hidden mt-6">
+                    <div id="masterProgressBar" class="bg-gradient-to-r from-amber-400 to-emerald-400 h-full w-0 transition-all duration-500"></div>
+                </div>
+            </div>
+
+            <h3 class="text-lg font-black text-slate-800 mb-4 flex items-center gap-2">
+                <i class="fa-solid fa-layer-group text-indigo-600"></i> مقارنة وتقييم الأنظمة الخمسة للمدرسة الحالية
+            </h3>
+            <div id="masterSystemsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8"></div>
+
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-rose-200">
+                <h3 class="text-base font-black text-rose-800 mb-3 flex items-center gap-2">
+                    <i class="fa-solid fa-triangle-exclamation text-rose-600"></i> قائمة العناصر الحرجة والكميات المطلوبة للصيانة (🔴)
+                </h3>
+                <div id="criticalItemsList" class="space-y-3 text-xs">
+                    <p class="text-slate-400 italic">لا يوجد عناصر حرجة حالياً أو لم يتم التقييم بعد.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Schools List Dashboard Tab -->
+        <div id="section_analytics" class="tab-content hidden">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mb-8">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+                    <div>
+                        <h2 class="text-2xl font-black text-slate-900 flex items-center gap-2">
+                            <i class="fa-solid fa-list-check text-indigo-600"></i>
+                            📋 قائمة المدارس المقيّمة وتفاصيل الأنظمة الخمسة
+                        </h2>
+                        <p class="text-slate-500 text-xs mt-1">تحليل شامل ومقارنة أداء المدارس المسجلة بناءً على الأنظمة الفنية الخمسة</p>
+                    </div>
+                    <button onclick="renderAnalyticsDashboard()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-3.5 py-2 rounded-xl text-xs transition flex items-center gap-1.5 shadow-sm">
+                        <i class="fa-solid fa-rotate"></i> تحديث البيانات
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                    <div class="bg-slate-900 text-white p-5 rounded-2xl shadow-sm border border-slate-800">
+                        <div class="text-slate-400 text-xs font-bold mb-1">إجمالي المدارس المقيّمة</div>
+                        <div id="analytics_totalSchools" class="text-3xl font-black text-amber-400">0 مدرسة</div>
+                    </div>
+                    <div class="bg-slate-900 text-white p-5 rounded-2xl shadow-sm border border-slate-800">
+                        <div class="text-slate-400 text-xs font-bold mb-1">المتوسط العام لكافة المدارس</div>
+                        <div id="analytics_avgScore" class="text-3xl font-black text-emerald-400">0.00%</div>
+                    </div>
+                    <div class="bg-slate-900 text-white p-5 rounded-2xl shadow-sm border border-slate-800">
+                        <div class="text-slate-400 text-xs font-bold mb-1">المدرسة الأعلى تقييماً 🥇</div>
+                        <div id="analytics_topSchool" class="text-base font-black text-amber-300 truncate">-</div>
+                        <div id="analytics_topScore" class="text-xs font-extrabold text-emerald-400 mt-1">0.00%</div>
+                    </div>
+                    <div class="bg-slate-900 text-white p-5 rounded-2xl shadow-sm border border-slate-800">
+                        <div class="text-slate-400 text-xs font-bold mb-1">المدرسة الأقل تقييماً ⚠️</div>
+                        <div id="analytics_lowSchool" class="text-base font-black text-rose-300 truncate">-</div>
+                        <div id="analytics_lowScore" class="text-xs font-extrabold text-rose-400 mt-1">0.00%</div>
+                    </div>
+                </div>
+
+                <h3 class="text-base font-extrabold text-slate-800 mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-layer-group text-indigo-600"></i> متوسط أداء الأنظمة الخمسة عبر كافة المدارس
+                </h3>
+                <div id="analytics_systemsBreakdown" class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8"></div>
+
+                <div class="bg-slate-900 text-white p-5 rounded-2xl mb-6 shadow-md border border-slate-800">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-3">
+                        <h3 class="text-sm font-black text-amber-400 flex items-center gap-2">
+                            <i class="fa-solid fa-filter text-indigo-400"></i> أداة تصفية وفلترة قائمة المدارس المتقدمة
+                        </h3>
+                        <span class="text-[11px] text-slate-400">تطبيق فوري لنتائج الفلترة والبحث بالجدول</span>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        <div>
+                            <label class="block text-[11px] font-extrabold text-slate-300 mb-1">🔍 بحث باسم المدرسة أو الموقع:</label>
+                            <div class="relative">
+                                <i class="fa-solid fa-magnifying-glass absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                                <input type="text" 
+                                       id="analyticsSearchInput" 
+                                       onkeyup="renderAnalyticsDashboard()" 
+                                       placeholder="أدخل اسم المدرسة أو المدينة..." 
+                                       class="w-full pr-9 pl-4 py-2 border border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-800 text-white font-medium">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-[11px] font-extrabold text-slate-300 mb-1">🎯 تصفية حسب حالة التقييم:</label>
+                            <select id="analyticsStatusFilter" 
+                                    onchange="renderAnalyticsDashboard()" 
+                                    class="w-full px-3 py-2 border border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-800 text-white font-bold">
+                                <option value="all">🔍 جميع المدارس (كافة الحالات)</option>
+                                <option value="good">🟢 ممتاز / جيد (≥ 85%)</option>
+                                <option value="moderate">🔵 مناسب (60% - 84.9%)</option>
+                                <option value="weak">🟡 ضعيف (35% - 59.9%)</option>
+                                <option value="critical">🔴 حرج للغاية (&lt; 35%)</option>
+                            </select>
+                        </div>
+
+                        <div class="flex items-end">
+                            <button onclick="resetAnalyticsFilters()" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold px-3 py-2 rounded-xl text-xs transition flex items-center justify-center gap-1.5">
+                                <i class="fa-solid fa-arrow-rotate-right text-amber-400"></i> إعادة ضبط الفلاتر
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-right text-xs text-slate-700">
+                        <thead class="bg-slate-100 text-slate-800 font-black uppercase border-b border-slate-200">
+                            <tr>
+                                <th class="p-3">#</th>
+                                <th class="p-3">اسم المدرسة</th>
+                                <th class="p-3">الموقع</th>
+                                <th class="p-3">تاريخ التقييم</th>
+                                <th class="p-3 text-center">الإنشائي (15%)</th>
+                                <th class="p-3 text-center">المعماري (20%)</th>
+                                <th class="p-3 text-center">الكهربائي (10%)</th>
+                                <th class="p-3 text-center">الميكانيكي (25%)</th>
+                                <th class="p-3 text-center">الصحة والسلامة (30%)</th>
+                                <th class="p-3 text-center">النتيجة الكلية</th>
+                                <th class="p-3 text-center">التقييم</th>
+                                <th class="p-3 text-center">إجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="analyticsTableBody" class="divide-y divide-slate-100 font-bold">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Schools History Registry Tab -->
+        <div id="section_registry" class="tab-content hidden">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mb-6">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+                    <div>
+                        <h2 class="text-2xl font-black text-slate-900 flex items-center gap-2">
+                            <i class="fa-solid fa-landmark text-emerald-600"></i>
+                            سجل المدارس المقيّمة
+                        </h2>
+                        <p class="text-slate-500 text-xs mt-1">أرشيف المدارس والتقييمات المحفوظة بالنظام لإعادة الفتح أو المراجعة أو الحذف</p>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <input type="text" id="registrySearchInput" onkeyup="renderRegistryTable()" placeholder="ابحث باسم المدرسة، المدينة، المقيّم..." class="px-4 py-2 border border-slate-300 rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-500 w-64">
+                        <button onclick="clearRegistryHistory()" class="bg-rose-100 hover:bg-rose-200 text-rose-800 font-bold px-3 py-2 rounded-xl text-xs transition border border-rose-200">
+                            <i class="fa-solid fa-trash"></i> مسح الكل
+                        </button>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-right text-xs text-slate-700">
+                        <thead class="bg-slate-50 text-slate-600 font-extrabold uppercase border-b border-slate-200">
+                            <tr>
+                                <th class="p-3">#</th>
+                                <th class="p-3">اسم المدرسة</th>
+                                <th class="p-3">المدينة / الموقع</th>
+                                <th class="p-3">اسم المقيّم</th>
+                                <th class="p-3">تاريخ التقييم</th>
+                                <th class="p-3 text-center">النتيجة الإجمالية</th>
+                                <th class="p-3 text-center">حالة التقييم</th>
+                                <th class="p-3 text-center">إجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="registryTableBody" class="divide-y divide-slate-100 font-medium">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="systemsContainer"></div>
+
+    </main>
+
+    <footer class="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-400 no-print">
+        نظام تقييم المدارس الميداني &copy; 2026 - شركة تطوير للمباني (TBC) & مركز العمران المتقدم
+    </footer>
+
+    <!-- JavaScript Logic -->
+    <script>
+        const assessmentCriteria = {
+            'الفحص_البصري': {
+                'لا يوجد أي عيوب': { score: 1, type: 'green' },
+                'عيوب سطحية بسيطة': { score: 0.8, type: 'green' },
+                'تآكل واضح بالعين': { score: 0.6, type: 'yellow' },
+                'تشوه واضح وتشقق نافذ': { score: 0.2, type: 'red' },
+                'فقدان كامل للطبقة السطحية': { score: 0, type: 'red' },
+                'لا ينطبق': { score: null, type: 'na' }
+            },
+            'الحالة_الفنية': {
+                'مطابق للمواصفات': { score: 1, type: 'green' },
+                'تآكل سطحي طفيف': { score: 0.8, type: 'green' },
+                'تشققات سطحية غير نافذة': { score: 0.6, type: 'yellow' },
+                'تأكل شديد في السطح': { score: 0.2, type: 'red' },
+                'فشل إنشائي واضح': { score: 0, type: 'red' },
+                'لا ينطبق': { score: null, type: 'na' }
+            },
+            'الحالة_التشغيلية': {
+                'يعمل بكفاءة عالية': { score: 1, type: 'green' },
+                'أداء جيد': { score: 0.8, type: 'green' },
+                'أداء مقبول': { score: 0.6, type: 'yellow' },
+                'أداء متدني جداً': { score: 0.2, type: 'red' },
+                'توقف كامل عن العمل': { score: 0, type: 'red' },
+                'لا ينطبق': { score: null, type: 'na' }
+            },
+            'السلامة': {
+                'أمن بالكامل': { score: 1, type: 'green' },
+                'يحتاج تنبيهات بسيطة': { score: 0.8, type: 'green' },
+                'خطر متوسط': { score: 0.6, type: 'yellow' },
+                'خطر داهم': { score: 0.2, type: 'red' },
+                'غير أمن بالمرة': { score: 0, type: 'red' },
+                'لا ينطبق': { score: null, type: 'na' }
+            },
+            'الصيانة_المطلوبة': {
+                'لا يتطلب صيانة': { score: 1, type: 'green' },
+                'صيانة وقائية': { score: 0.8, type: 'green' },
+                'إصلاح وتعديل': { score: 0.6, type: 'yellow' },
+                'إحلال وتجديد جزئي': { score: 0.2, type: 'red' },
+                'إحلال وتجديد كامل': { score: 0, type: 'red' },
+                'لا ينطبق': { score: null, type: 'na' }
+            }
+        };
+
+        function getCriteriaOptions(sysIdx, critKey) {
+            return assessmentCriteria[critKey];
+        }
+
+        const systemsData = [
+            {
+                name: 'النظام الإنشائي',
+                weight: 0.15,
+                elements: [
+                    { name: 'الملاعب', weight: 0.1 },
+                    { name: 'بروزات إنشائية تشمل جلسات النوافذ وأطرها', weight: 0.1 },
+                    { name: 'الهياكل الانشائية خرسانية او معدنية', weight: 0.23 },
+                    { name: 'الحوائط والقواطع الداخلية', weight: 0.08 },
+                    { name: 'الحوائط الخارجية والواجهات', weight: 0.1 },
+                    { name: 'السلالم و الدرج الداخلي والمنحدرات', weight: 0.05 },
+                    { name: 'طبقات الدفان أسفل الارضيات وعلامات الهبوط', weight: 0.06 },
+                    { name: 'مظلات الافنية الداخلية', weight: 0.04 },
+                    { name: 'مظلات الساحات الخارجية', weight: 0.05 },
+                    { name: 'فواصل التمدد الراسية والافقية', weight: 0.03 },
+                    { name: 'العزل المائي للأسطح', weight: 0.05 },
+                    { name: 'الميدات الارضية', weight: 0.07 },
+                    { name: 'العزل المائي لدورات المياه', weight: 0.04 }
+                ]
+            },
+            {
+                name: 'النظام المعماري',
+                weight: 0.20,
+                elements: [
+                    { name: 'جميع انواع الارضيات', weight: 0.06 },
+                    { name: 'حوائط وقواطع داخلية وقيشاني دورات المياه', weight: 0.06 },
+                    { name: 'الموقع العام و الارصفة و المنحدرات', weight: 0.05 },
+                    { name: 'السلالم والدرابزين', weight: 0.04 },
+                    { name: 'الياسة الداخلية', weight: 0.05 },
+                    { name: 'الدهانات الداخلية', weight: 0.04 },
+                    { name: 'الدهانات الخارجية', weight: 0.05 },
+                    { name: 'جميع انواع الاسقف', weight: 0.05 },
+                    { name: 'بوابات المداخل الرئيسية', weight: 0.03 },
+                    { name: 'ابواب الفصول', weight: 0.03 },
+                    { name: 'ابواب دورات المياة', weight: 0.02 },
+                    { name: 'النوافذ', weight: 0.05 },
+                    { name: 'مظلات الساحه الداخلية', weight: 0.04 },
+                    { name: 'الواجهات و القواطع الزجاجية', weight: 0.08 },
+                    { name: 'الاسوار الخارجية', weight: 0.05 },
+                    { name: 'درابزين', weight: 0.03 },
+                    { name: 'احواض الزراعة / المسطحات الخضراء', weight: 0.04 },
+                    { name: 'تشطيب السطح', weight: 0.05 },
+                    { name: 'الارضيات', weight: 0.04 },
+                    { name: 'سقف مستعار', weight: 0.05 },
+                    { name: 'جدار داخلي', weight: 0.03 },
+                    { name: 'قاطع داخلي', weight: 0.03 },
+                    { name: 'منحدر ذوي الإعاقة', weight: 0.03 }
+                ]
+            },
+            {
+                name: 'النظام الكهربائي',
+                weight: 0.10,
+                elements: [
+                    { name: 'لوحة المبنى الرئيسي MDB', weight: 0.15 },
+                    { name: 'لوحات الكهرباء العمومية SMDB-LP', weight: 0.15 },
+                    { name: 'الكابل المسلحة الرئيسية وغرف التفتيش', weight: 0.05 },
+                    { name: 'لوحات التوزيع الكهربائي الفرعية Panel Borad-LP', weight: 0.15 },
+                    { name: 'الاسلاك الكهربائية بأنواعها', weight: 0.03 },
+                    { name: 'نقاط الاستخدام و الاجهزة الكهربائية', weight: 0.02 },
+                    { name: 'المقابس الكهربائية', weight: 0.02 },
+                    { name: 'المقابس الكهربائية للمناطق الرطبة', weight: 0.02 },
+                    { name: 'مفاتيح الانارة', weight: 0.03 },
+                    { name: 'مفاتيح الفصل و التوصيل الكهربائية', weight: 0.03 },
+                    { name: 'وحدات انارة الطوارئ', weight: 0.02 },
+                    { name: 'لوحة مخارج الطوارئ', weight: 0.02 },
+                    { name: 'جرس المدرسة', weight: 0.02 },
+                    { name: 'كشافات الانارة الخارجية', weight: 0.02 },
+                    { name: 'كشافات الانارة الداخلية', weight: 0.02 },
+                    { name: 'وحدة الانارة الخارجية للمداخل', weight: 0.02 },
+                    { name: 'وحدة الانارة الداخلية', weight: 0.02 },
+                    { name: 'وحدة انارة دورات المياه', weight: 0.02 },
+                    { name: 'اللوحات الكهربائية الفرعية', weight: 0.05 },
+                    { name: 'جهاز تحسين معامل القدرة', weight: 0.02 },
+                    { name: 'مصدر تغذية كهربائية (العداد)', weight: 0.05 },
+                    { name: 'لوحة التحويل التلقائي الكهربائية (ATS)', weight: 0.03 },
+                    { name: 'نظام التأريض', weight: 0.02 },
+                    { name: 'نظام الحماية من الصواعق', weight: 0.02 }
+                ]
+            },
+            {
+                name: 'النظام الميكانيكي',
+                weight: 0.25,
+                elements: [
+                    { name: 'مضخات المياه', weight: 0.0588 },
+                    { name: 'خط نقل المياه الصاعد', weight: 0.0235 },
+                    { name: 'خزانات المياه العلوية', weight: 0.0353 },
+                    { name: 'منظومة توزيع شبكة المياه', weight: 0.0471 },
+                    { name: 'خطوط توزيع المياه النازل لشبكة تغذية المياه', weight: 0.0353 },
+                    { name: 'نقاط الاستخدام والاجهزة الصحية', weight: 0.0353 },
+                    { name: 'سخان المياه', weight: 0.0176 },
+                    { name: 'خط الصرف النازل والتهوية', weight: 0.0294 },
+                    { name: 'خطوط نقل مياه الصرف وغرف التفتيش', weight: 0.0412 },
+                    { name: 'بيارة تجميع مياه الصرف ونقاط التوصيل للشبكة العمومية', weight: 0.0353 },
+                    { name: 'السيفونات', weight: 0.0118 },
+                    { name: 'احواض غسيل الايادي', weight: 0.0176 },
+                    { name: 'الخلاطات', weight: 0.0118 },
+                    { name: 'المراحيض الافرنجية', weight: 0.0176 },
+                    { name: 'المراحيض الشرقية', weight: 0.0118 },
+                    { name: 'الميضاه', weight: 0.0176 },
+                    { name: 'مرشات المراحيض', weight: 0.0059 },
+                    { name: 'الابواب الاتوماتيكية', weight: 0.0118 },
+                    { name: 'المصاعد', weight: 0.0588 },
+                    { name: 'لوحة التحكم الري', weight: 0.0059 },
+                    { name: 'مضخة الصرف', weight: 0.0294 },
+                    { name: 'أنابيب مسار التمديدات (الكهرباء + الفريون)', weight: 0.0176 },
+                    { name: 'انابيب نظام التغذية', weight: 0.0235 },
+                    { name: 'محابس التغذية', weight: 0.0118 },
+                    { name: 'برادات المياه', weight: 0.0176 },
+                    { name: 'انابيب الري', weight: 0.0176 },
+                    { name: 'رشاشات الري', weight: 0.0118 },
+                    { name: 'التحكم بالدخول (Access control)', weight: 0.0118 },
+                    { name: 'الخزان الأرضي', weight: 0.0353 },
+                    { name: 'مراوح السحب المركزية', weight: 0.0235 },
+                    { name: 'وحدات التكييف', weight: 0.0941 },
+                    { name: 'مجاري الهواء التكييف (الدكت)', weight: 0.0353 },
+                    { name: 'مخارج الهواء التكييف', weight: 0.0176 },
+                    { name: 'انابيب تصريف التكييف', weight: 0.0118 },
+                    { name: 'نظام تنقية الهواء', weight: 0.0235 },
+                    { name: 'انابيب نظام الصرف الصحي', weight: 0.0235 },
+                    { name: 'صفايات تسليك المياه', weight: 0.0059 },
+                    { name: 'صفاية تصريف دورات المياه', weight: 0.0059 },
+                    { name: 'صفاية تصريف سطح', weight: 0.0059 },
+                    { name: 'مزاريب (حديد - بلاستيك - المونيوم)', weight: 0.0118 },
+                    { name: 'انابيب صرف مياه الامطار', weight: 0.0176 },
+                    { name: 'غرف تفتيش مياه الامطار', weight: 0.0178 }
+                ]
+            },
+            {
+                name: 'نظام الصحة والسلامة',
+                weight: 0.30,
+                elements: [
+                    { name: 'خزان مياه الحريق', weight: 0.0649 },
+                    { name: 'مضحة الحريق الكهربائية', weight: 0.0519 },
+                    { name: 'مضخة الحريق الديزل', weight: 0.0519 },
+                    { name: 'مضحة الحريق التعويضية (الجوكي)', weight: 0.026 },
+                    { name: 'لوحات التحكم بالمضخات', weight: 0.026 },
+                    { name: 'مجموعه المحابس بغرفه المضخات', weight: 0.026 },
+                    { name: 'صناديق الحريق', weight: 0.039 },
+                    { name: 'وصلات الدفاع المدني الخارجية', weight: 0.026 },
+                    { name: 'رشاشات الحريق(ان وجدت)', weight: 0.039 },
+                    { name: 'شبكه الاسلاك الحرارية', weight: 0.026 },
+                    { name: 'كواشف الحريق او الدخان او الحرارة', weight: 0.026 },
+                    { name: 'التمديدات العشوائية والمكشوفة', weight: 0.039 },
+                    { name: 'نظام مضخات الحريق', weight: 0.039 },
+                    { name: 'صنبور إطفاء حريق خارجي (العسكري)', weight: 0.026 },
+                    { name: 'أنابيب إطفاء الحريق', weight: 0.026 },
+                    { name: 'مانعات انتشار الحريق', weight: 0.026 },
+                    { name: 'بطانية حريق', weight: 0.013 },
+                    { name: 'حواجز السلامة', weight: 0.026 },
+                    { name: 'صمامات الحريق', weight: 0.026 },
+                    { name: 'حقيبة إسعافات أولية', weight: 0.013 },
+                    { name: 'دش طوارئ', weight: 0.013 },
+                    { name: 'مغسلة غسيل العين', weight: 0.013 },
+                    { name: 'أجهزة إنذار الحريق', weight: 0.0519 },
+                    { name: 'طفاية حريق', weight: 0.039 },
+                    { name: 'لوحة إنذار الحريق', weight: 0.026 },
+                    { name: 'لوحات الإخلاء', weight: 0.039 },
+                    { name: 'مسارات الهروب', weight: 0.039 },
+                    { name: 'مخارج الطوارئ', weight: 0.026 },
+                    { name: 'الأبواب المقاومة للحريق', weight: 0.026 },
+                    { name: 'الجدران المقاومة للحريق', weight: 0.026 },
+                    { name: 'نقطة نداء يدوي', weight: 0.026 },
+                    { name: 'نقاط التجمع ولوحاتها', weight: 0.026 },
+                    { name: 'لوحات إرشادية للسلامة', weight: 0.0124 }
+                ]
+            }
+        ];
+
+        let answers = {};
+        let currentSchoolId = null;
+
+        function initApp() {
+            renderSystems();
+            switchTab('master');
+            calculateScores();
+            renderRegistryTable();
+        }
+
+        function toggleArchitecturalPlanModal() {
+            const drawer = document.getElementById('architecturalPlanDrawer');
+            if (drawer) drawer.classList.toggle('hidden');
+        }
+
+        function renderSystems() {
+            const container = document.getElementById('systemsContainer');
+            container.innerHTML = '';
+
+            systemsData.forEach((sys, sysIdx) => {
+                const sysDiv = document.createElement('div');
+                sysDiv.id = `section_${sysIdx}`;
+                sysDiv.className = `tab-content hidden`;
+
+                let elementsHTML = sys.elements.map((elem, elemIdx) => {
+                    return `
+                        <div class="bg-white p-5 rounded-2xl border border-slate-200 mb-4 shadow-sm hover:border-slate-300 transition card-box">
+                            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-3 pb-2 border-b border-slate-100">
+                                <h4 class="font-bold text-slate-800 text-sm md:text-base flex items-center gap-2">
+                                    <span class="w-6 h-6 rounded-full bg-slate-100 text-slate-600 text-xs flex items-center justify-center font-bold">${elemIdx + 1}</span>
+                                    ${elem.name}
+                                </h4>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-xs font-semibold px-2.5 py-1 bg-slate-100 text-slate-500 rounded-md">
+                                        وزن العنصر: ${(elem.weight * 100).toFixed(1)}%
+                                    </span>
+                                    <label id="photoBtn_${sysIdx}_${elemIdx}" class="cursor-pointer bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-2.5 py-1 rounded-md text-xs transition flex items-center gap-1 border border-slate-300">
+                                        <i class="fa-solid fa-camera text-blue-600"></i> إرفاق صورة
+                                        <input type="file" accept="image/*" capture="environment" class="hidden" id="imgInput_${sysIdx}_${elemIdx}" onchange="onPhotoUpload(${sysIdx}, ${elemIdx}, this)">
+                                    </label>
+                                    <div id="photoPreview_${sysIdx}_${elemIdx}" class="inline-block"></div>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 pt-1">
+                                ${Object.keys(assessmentCriteria).map(critKey => {
+                                    const options = getCriteriaOptions(sysIdx, critKey);
+                                    return `
+                                        <div>
+                                            <label class="block text-xs font-bold text-slate-600 mb-1">${critKey.replace('_', ' ')}</label>
+                                            <select onchange="onCriteriaChange(${sysIdx}, ${elemIdx}, '${critKey}', this)" 
+                                                    id="sel_${sysIdx}_${elemIdx}_${critKey}"
+                                                    class="w-full text-xs p-2.5 border border-slate-300 rounded-xl outline-none transition bg-white font-medium">
+                                                <option value="">-- اختر الحالة --</option>
+                                                ${Object.keys(options).map(opt => {
+                                                    const info = options[opt];
+                                                    let icon = info.type === 'green' ? '🟢 ' : info.type === 'yellow' ? '🟡 ' : info.type === 'red' ? '🔴 ' : '⚪ ';
+                                                    return `<option value="${opt}">${icon} ${opt}</option>`;
+                                                }).join('')}
+                                            </select>
+                                        </div>
+                                    `;
+                                }).join('')}
+                            </div>
+                            <div id="qtyBox_${sysIdx}_${elemIdx}" class="mt-3 pt-3 border-t border-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-slate-50 p-3 rounded-xl opacity-60 transition">
+                                <div class="flex items-center gap-2 text-xs font-black text-slate-700">
+                                    <i class="fa-solid fa-boxes-stacked text-amber-600"></i>
+                                    <span>الكمية المطلوبة:</span>
+                                </div>
+                                <input type="text" 
+                                       id="qtyInput_${sysIdx}_${elemIdx}" 
+                                       disabled
+                                       onchange="onQtyChange(${sysIdx}, ${elemIdx}, this.value)"
+                                       placeholder="تتنشّط الخانة للبنود الضعيفة أو الحرجة..." 
+                                       class="w-full sm:w-72 px-3 py-1.5 border border-slate-300 rounded-xl text-xs outline-none transition font-bold text-slate-800 opacity-50 bg-slate-100 cursor-not-allowed">
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                let architecturalViewerHTML = '';
+                if (sysIdx === 1) {
+                    architecturalViewerHTML = `
+                        <div class="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-5 rounded-2xl mb-6 shadow-lg border border-indigo-500/30 flex flex-col gap-4">
+                            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 rounded-xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-amber-400 text-xl flex-shrink-0">
+                                        <i class="fa-solid fa-compass-drafting"></i>
+                                    </div>
+                                    <div>
+                                        <h3 class="text-base font-black text-white">المخطط المعماري للدور الأرضي (26-22 Ground Floor)</h3>
+                                        <p class="text-xs text-slate-300">استعرض المخطط الهندسي لحصر الكميات والمساحات الفنية أثناء التقييم</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <button onclick="toggleArchitecturalPlanModal()" class="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black px-5 py-2.5 rounded-xl text-xs transition shadow-md flex items-center gap-2 border border-amber-300 transform hover:-translate-y-0.5">
+                                        <i class="fa-solid fa-map-location-dot text-sm"></i>
+                                        <span>انظر المخطط</span>
+                                    </button>
+                                    <a href="26-22 ground floor.pdf" target="_blank" class="bg-indigo-700 hover:bg-indigo-800 text-white font-bold px-3.5 py-2.5 rounded-xl text-xs transition flex items-center gap-1.5 shadow-sm border border-indigo-500/30">
+                                        <i class="fa-solid fa-up-right-from-square"></i> شاشة كاملة
+                                    </a>
+                                </div>
+                            </div>
+                            <div id="architecturalPlanDrawer" class="hidden pt-3 border-t border-indigo-900/60">
+                                <div class="w-full rounded-xl overflow-hidden border border-slate-700 bg-slate-950 shadow-2xl relative">
+                                    <object data="26-22 ground floor.pdf" type="application/pdf" class="w-full h-[600px] rounded-lg">
+                                        <iframe src="26-22 ground floor.pdf" title="Ground Floor Architectural Plan" class="w-full h-[600px] border-0">
+                                            <p class="text-center p-8 text-slate-400 font-bold">
+                                                المتصفح لا يدعم التضمين المباشر لملفات PDF. <a href="26-22 ground floor.pdf" target="_blank" class="text-amber-400 underline">اضغط هنا لفتح المخطط المعماري</a>.
+                                            </p>
+                                        </iframe>
+                                    </object>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                sysDiv.innerHTML = `
+                    <div id="sysBanner_${sysIdx}" class="bg-slate-50 border-slate-200 border p-6 rounded-2xl mb-6 shadow-sm transition">
+                        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
+                            <div>
+                                <span id="sysWeightBadge_${sysIdx}" class="text-xs font-black bg-slate-800 text-white px-3 py-1 rounded-full">
+                                    وزن النظام الإجمالي: ${(sys.weight * 100)}%
+                                </span>
+                                <h2 class="text-2xl font-black text-slate-900 mt-2">${sys.name} (${sys.elements.length} عنصر)</h2>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <span id="sysBadge_${sysIdx}" class="px-4 py-1.5 rounded-full text-xs font-black bg-white border border-slate-200 text-slate-600 shadow-sm">
+                                    لم يتم التقييم
+                                </span>
+                                <span id="sysScoreText_${sysIdx}" class="text-3xl font-black text-slate-800">0.0%</span>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center text-xs mt-4">
+                            <div class="bg-white p-3 rounded-xl border border-emerald-200 text-emerald-800 shadow-sm">
+                                <div class="text-slate-400 font-bold mb-1">عناصر ممتازة (🟢)</div>
+                                <div id="sysGreenCount_${sysIdx}" class="text-base font-black text-emerald-600">0 عنصر</div>
+                            </div>
+                            <div class="bg-white p-3 rounded-xl border border-amber-200 text-amber-800 shadow-sm">
+                                <div class="text-slate-400 font-bold mb-1">عناصر متوسطة (🟡)</div>
+                                <div id="sysYellowCount_${sysIdx}" class="text-base font-black text-amber-600">0 عنصر</div>
+                            </div>
+                            <div class="bg-white p-3 rounded-xl border border-rose-200 text-rose-800 shadow-sm">
+                                <div class="text-slate-400 font-bold mb-1">عناصر حرجة (🔴)</div>
+                                <div id="sysRedCount_${sysIdx}" class="text-base font-black text-rose-600">0 عنصر</div>
+                            </div>
+                            <div class="bg-white p-3 rounded-xl border border-slate-200 text-slate-600 shadow-sm">
+                                <div class="text-slate-400 font-bold mb-1">عناصر مستبعدة (⚪ N/A)</div>
+                                <div id="sysNaCount_${sysIdx}" class="text-base font-black text-slate-500">0 عنصر</div>
+                            </div>
+                        </div>
+                    </div>
+                    ${architecturalViewerHTML}
+                    ${elementsHTML}
+                `;
+
+                container.appendChild(sysDiv);
+            });
+        }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('ring-2', 'ring-offset-2', 'ring-slate-900', 'shadow-md');
+            });
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.add('hidden');
+            });
+
+            if (tabId === 'master') {
+                document.getElementById('section_master').classList.remove('hidden');
+                document.getElementById('tabBtn_master').classList.add('ring-2', 'ring-offset-2', 'ring-slate-900', 'shadow-md');
+            } else if (tabId === 'analytics') {
+                document.getElementById('section_analytics').classList.remove('hidden');
+                document.getElementById('tabBtn_analytics').classList.add('ring-2', 'ring-offset-2', 'ring-slate-900', 'shadow-md');
+                renderAnalyticsDashboard();
+            } else if (tabId === 'registry') {
+                document.getElementById('section_registry').classList.remove('hidden');
+                document.getElementById('tabBtn_registry').classList.add('ring-2', 'ring-offset-2', 'ring-slate-900', 'shadow-md');
+                renderRegistryTable();
+            } else {
+                document.getElementById(`section_${tabId}`).classList.remove('hidden');
+                document.getElementById(`tabBtn_${tabId}`).classList.add('ring-2', 'ring-offset-2', 'ring-slate-900', 'shadow-md');
+            }
+        }
+
+        function onCriteriaChange(sysIdx, elemIdx, critKey, selectEl) {
+            const val = selectEl.value;
+            if (!answers[sysIdx]) answers[sysIdx] = {};
+            if (!answers[sysIdx][elemIdx]) answers[sysIdx][elemIdx] = {};
+
+            answers[sysIdx][elemIdx][critKey] = val;
+
+            selectEl.classList.remove('option-green', 'option-yellow', 'option-red', 'option-na');
+            const opts = getCriteriaOptions(sysIdx, critKey);
+            if (val && opts[val]) {
+                const type = opts[val].type;
+                if (type === 'green') selectEl.classList.add('option-green');
+                else if (type === 'yellow') selectEl.classList.add('option-yellow');
+                else if (type === 'red') selectEl.classList.add('option-red');
+                else if (type === 'na') selectEl.classList.add('option-na');
+            }
+
+            if (critKey === 'الفحص_البصري') {
+                const otherCriteriaKeys = ['الحالة_الفنية', 'الحالة_التشغيلية', 'السلامة', 'الصيانة_المطلوبة'];
+                const isNA = (val === 'لا ينطبق');
+
+                otherCriteriaKeys.forEach(otherKey => {
+                    const otherSelect = document.getElementById(`sel_${sysIdx}_${elemIdx}_${otherKey}`);
+                    if (otherSelect) {
+                        if (isNA) {
+                            otherSelect.value = 'لا ينطبق';
+                            otherSelect.disabled = true;
+                            otherSelect.classList.add('opacity-50', 'bg-slate-100', 'cursor-not-allowed', 'option-na');
+                            answers[sysIdx][elemIdx][otherKey] = 'لا ينطبق';
+                        } else {
+                            otherSelect.disabled = false;
+                            otherSelect.classList.remove('opacity-50', 'bg-slate-100', 'cursor-not-allowed');
+                            if (answers[sysIdx][elemIdx][otherKey] === 'لا ينطبق') {
+                                otherSelect.value = '';
+                                otherSelect.classList.remove('option-na');
+                                answers[sysIdx][elemIdx][otherKey] = '';
+                            }
+                        }
+                    }
+                });
+
+                const photoBtn = document.getElementById(`photoBtn_${sysIdx}_${elemIdx}`);
+                const imgInput = document.getElementById(`imgInput_${sysIdx}_${elemIdx}`);
+                if (photoBtn && imgInput) {
+                    imgInput.disabled = isNA;
+                    if (isNA) {
+                        photoBtn.classList.add('opacity-50', 'pointer-events-none', 'cursor-not-allowed');
+                        removePhoto(sysIdx, elemIdx);
+                    } else {
+                        photoBtn.classList.remove('opacity-50', 'pointer-events-none', 'cursor-not-allowed');
+                    }
+                }
+            }
+
+            calculateScores();
+        }
+
+        function onPhotoUpload(sysIdx, elemIdx, fileInput) {
+            const file = fileInput.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const dataUrl = e.target.result;
+                if (!answers[sysIdx]) answers[sysIdx] = {};
+                if (!answers[sysIdx][elemIdx]) answers[sysIdx][elemIdx] = {};
+                answers[sysIdx][elemIdx].photo = dataUrl;
+
+                renderElementPhotoPreview(sysIdx, elemIdx, dataUrl);
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function removePhoto(sysIdx, elemIdx) {
+            if (answers[sysIdx] && answers[sysIdx][elemIdx]) {
+                delete answers[sysIdx][elemIdx].photo;
+            }
+            const fileInput = document.getElementById(`imgInput_${sysIdx}_${elemIdx}`);
+            if (fileInput) fileInput.value = '';
+            renderElementPhotoPreview(sysIdx, elemIdx, null);
+        }
+
+        function renderElementPhotoPreview(sysIdx, elemIdx, dataUrl) {
+            const container = document.getElementById(`photoPreview_${sysIdx}_${elemIdx}`);
+            if (!container) return;
+
+            if (dataUrl) {
+                container.innerHTML = `
+                    <div class="relative group inline-block">
+                        <img src="${dataUrl}" class="w-10 h-10 object-cover rounded-lg border border-slate-300 shadow-sm">
+                        <button onclick="removePhoto(${sysIdx}, ${elemIdx})" title="حذف الصورة" class="absolute -top-1.5 -right-1.5 bg-rose-600 text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px] shadow hover:bg-rose-700">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+                `;
+            } else {
+                container.innerHTML = '';
+            }
+        }
+
+        function onQtyChange(sysIdx, elemIdx, val) {
+            if (!answers[sysIdx]) answers[sysIdx] = {};
+            if (!answers[sysIdx][elemIdx]) answers[sysIdx][elemIdx] = {};
+            answers[sysIdx][elemIdx].quantity = val;
+            calculateScores();
+        }
+
+        function getRatingStatusTheme(score, isEvaluated) {
+            if (!isEvaluated) {
+                return {
+                    text: 'في انتظار التقييم',
+                    badgeClass: 'bg-slate-100 text-slate-600 border border-slate-300 font-bold',
+                    bgClass: 'bg-slate-50 border-slate-200',
+                    textColor: 'text-slate-700',
+                    barClass: 'bg-slate-400'
+                };
+            }
+            if (score >= 0.85) {
+                return {
+                    text: 'جيد (ممتاز)',
+                    badgeClass: 'bg-emerald-100 text-emerald-800 border border-emerald-300 font-extrabold',
+                    bgClass: 'bg-emerald-50/70 border-emerald-300',
+                    textColor: 'text-emerald-700',
+                    barClass: 'bg-emerald-500'
+                };
+            }
+            if (score >= 0.60) {
+                return {
+                    text: 'مناسب',
+                    badgeClass: 'bg-blue-100 text-blue-800 border border-blue-300 font-extrabold',
+                    bgClass: 'bg-blue-50/70 border-blue-300',
+                    textColor: 'text-blue-700',
+                    barClass: 'bg-blue-500'
+                };
+            }
+            if (score >= 0.35) {
+                return {
+                    text: 'ضعيف',
+                    badgeClass: 'bg-amber-100 text-amber-800 border border-amber-300 font-extrabold',
+                    bgClass: 'bg-amber-50/70 border-amber-300',
+                    textColor: 'text-amber-700',
+                    barClass: 'bg-amber-500'
+                };
+            }
+            return {
+                text: 'حرج للغاية',
+                badgeClass: 'bg-rose-100 text-rose-800 border border-rose-300 font-extrabold',
+                bgClass: 'bg-rose-50/70 border-rose-300',
+                textColor: 'text-rose-700',
+                barClass: 'bg-rose-500'
+            };
+        }
+
+        function calculateScores() {
+            let schoolWeightedScoreSum = 0;
+            let schoolActiveWeightSum = 0;
+            
+            let elementCriticals = {};
+            let masterGridHTML = '';
+
+            systemsData.forEach((sys, sysIdx) => {
+                let activeElemWeightSum = 0;
+                let activeElemWeightedScoreSum = 0;
+                
+                let elemGreen = 0;
+                let elemYellow = 0;
+                let elemRed = 0;
+                let elemNA = 0;
+
+                sys.elements.forEach((elem, elemIdx) => {
+                    const elemAns = answers[sysIdx] && answers[sysIdx][elemIdx] ? answers[sysIdx][elemIdx] : {};
+                    let scores = [];
+
+                    Object.keys(assessmentCriteria).forEach(critKey => {
+                        const selVal = elemAns[critKey];
+                        const opts = getCriteriaOptions(sysIdx, critKey);
+                        if (selVal && opts[selVal]) {
+                            const info = opts[selVal];
+                            if (info.score !== null) {
+                                scores.push(info.score);
+                                if (info.type === 'red') {
+                                    const key = `${sysIdx}_${elemIdx}`;
+                                    if (!elementCriticals[key]) {
+                                        elementCriticals[key] = {
+                                            system: sys.name,
+                                            element: elem.name,
+                                            issues: [],
+                                            quantity: elemAns.quantity || '',
+                                            photo: elemAns.photo || null
+                                        };
+                                    }
+                                    elementCriticals[key].issues.push({
+                                        criterion: critKey.replace('_', ' '),
+                                        val: selVal
+                                    });
+                                }
+                            }
+                        }
+                    });
+
+                    const qtyBox = document.getElementById(`qtyBox_${sysIdx}_${elemIdx}`);
+                    const qtyInput = document.getElementById(`qtyInput_${sysIdx}_${elemIdx}`);
+
+                    if (scores.length > 0) {
+                        let elemAvgScore = scores.reduce((a, b) => a + b, 0) / scores.length;
+                        activeElemWeightedScoreSum += elemAvgScore * elem.weight;
+                        activeElemWeightSum += elem.weight;
+
+                        if (elemAvgScore >= 0.85) elemGreen++;
+                        else if (elemAvgScore >= 0.60) elemYellow++;
+                        else elemRed++;
+
+                        if (elemAvgScore < 0.60) {
+                            if (qtyInput) {
+                                qtyInput.disabled = false;
+                                qtyInput.placeholder = "أدخل الكمية المطلوبة (مثال: 5 قطع / 20 م2)...";
+                                qtyInput.classList.remove('opacity-50', 'bg-slate-100', 'cursor-not-allowed');
+                            }
+                            if (qtyBox) {
+                                qtyBox.className = "mt-3 pt-3 border-t border-rose-300 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-rose-50 p-3 rounded-xl transition";
+                            }
+                        } else {
+                            if (qtyInput) {
+                                qtyInput.value = '';
+                                qtyInput.disabled = true;
+                                qtyInput.placeholder = "تتنشّط الخانة للبنود الضعيفة أو الحرجة...";
+                                qtyInput.classList.add('opacity-50', 'bg-slate-100', 'cursor-not-allowed');
+                                if (answers[sysIdx] && answers[sysIdx][elemIdx]) {
+                                    delete answers[sysIdx][elemIdx].quantity;
+                                }
+                            }
+                            if (qtyBox) {
+                                qtyBox.className = "mt-3 pt-3 border-t border-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-slate-50 p-3 rounded-xl opacity-60 transition";
+                            }
+                        }
+                    } else {
+                        elemNA++;
+                        if (qtyInput) {
+                            qtyInput.value = '';
+                            qtyInput.disabled = true;
+                            qtyInput.placeholder = "تتنشّط الخانة للبنود الضعيفة أو الحرجة...";
+                            qtyInput.classList.add('opacity-50', 'bg-slate-100', 'cursor-not-allowed');
+                            if (answers[sysIdx] && answers[sysIdx][elemIdx]) {
+                                delete answers[sysIdx][elemIdx].quantity;
+                            }
+                        }
+                        if (qtyBox) {
+                            qtyBox.className = "mt-3 pt-3 border-t border-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-slate-50 p-3 rounded-xl opacity-60 transition";
+                        }
+                    }
+                });
+
+                let systemScore = activeElemWeightSum > 0 ? (activeElemWeightedScoreSum / activeElemWeightSum) : 0;
+                let systemPercent = (systemScore * 100).toFixed(1);
+                const isEvaluated = activeElemWeightSum > 0;
+
+                let theme = getRatingStatusTheme(systemScore, isEvaluated);
+
+                document.getElementById(`sysScoreText_${sysIdx}`).innerText = `${systemPercent}%`;
+                document.getElementById(`sysScoreText_${sysIdx}`).className = `text-3xl font-black ${theme.textColor}`;
+                
+                document.getElementById(`sysGreenCount_${sysIdx}`).innerText = `${elemGreen} عنصر`;
+                document.getElementById(`sysYellowCount_${sysIdx}`).innerText = `${elemYellow} عنصر`;
+                document.getElementById(`sysRedCount_${sysIdx}`).innerText = `${elemRed} عنصر`;
+                document.getElementById(`sysNaCount_${sysIdx}`).innerText = `${elemNA} عنصر`;
+
+                const sysBadge = document.getElementById(`sysBadge_${sysIdx}`);
+                sysBadge.innerText = theme.text;
+                sysBadge.className = `px-4 py-1.5 rounded-full text-xs ${theme.badgeClass}`;
+
+                const sysBanner = document.getElementById(`sysBanner_${sysIdx}`);
+                if (sysBanner) {
+                    sysBanner.className = `${theme.bgClass} border p-6 rounded-2xl mb-6 shadow-sm transition`;
+                }
+
+                if (activeElemWeightSum > 0) {
+                    schoolWeightedScoreSum += systemScore * sys.weight;
+                    schoolActiveWeightSum += sys.weight;
+                }
+
+                masterGridHTML += `
+                    <div class="bg-white p-5 rounded-2xl border ${theme.bgClass} shadow-sm flex flex-col justify-between transition">
+                        <div>
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-xs font-extrabold text-slate-600">${sys.name} (${(sys.weight * 100)}%)</span>
+                                <span class="px-3 py-1 rounded-full text-xs ${theme.badgeClass}">${theme.text}</span>
+                            </div>
+                            <div class="text-3xl font-black ${theme.textColor} mb-3">${systemPercent}%</div>
+                            <div class="w-full bg-slate-200/60 h-2.5 rounded-full overflow-hidden mb-4">
+                                <div class="${theme.barClass} h-full transition-all duration-500" style="width: ${systemPercent}%"></div>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-3 text-center text-xs pt-3 border-t border-slate-100">
+                            <div><span class="text-emerald-600 font-bold">🟢 ${elemGreen} عنصر</span></div>
+                            <div><span class="text-amber-600 font-bold">🟡 ${elemYellow} عنصر</span></div>
+                            <div><span class="text-rose-600 font-bold">🔴 ${elemRed} عنصر</span></div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            document.getElementById('masterSystemsGrid').innerHTML = masterGridHTML;
+
+            let isSchoolEvaluated = schoolActiveWeightSum > 0;
+            let finalSchoolScore = isSchoolEvaluated ? (schoolWeightedScoreSum / schoolActiveWeightSum) : 0;
+            let finalSchoolPercent = (finalSchoolScore * 100).toFixed(2);
+
+            document.getElementById('masterScoreText').innerText = `${finalSchoolPercent}%`;
+            document.getElementById('masterProgressBar').style.width = `${finalSchoolPercent}%`;
+
+            const masterBadge = document.getElementById('masterBadge');
+            let overallTheme = getRatingStatusTheme(finalSchoolScore, isSchoolEvaluated);
+            masterBadge.innerText = overallTheme.text;
+            masterBadge.className = `mt-2 inline-block px-4 py-1.5 rounded-full text-xs ${overallTheme.badgeClass}`;
+
+            const critListEl = document.getElementById('criticalItemsList');
+            const criticalArray = Object.values(elementCriticals);
+
+            if (criticalArray.length > 0) {
+                critListEl.innerHTML = criticalArray.map(item => `
+                    <div class="p-4 bg-rose-50 border-r-4 border-rose-600 rounded-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-3 shadow-sm">
+                        <div class="flex items-start gap-3">
+                            ${item.photo ? `<img src="${item.photo}" class="w-14 h-14 object-cover rounded-xl border border-rose-300 shadow-sm flex-shrink-0">` : ''}
+                            <div>
+                                <div class="font-black text-rose-950 text-xs sm:text-sm mb-1.5">[${item.system}] ${item.element}</div>
+                                <div class="flex flex-wrap gap-1.5">
+                                    ${item.issues.map(iss => `
+                                        <span class="bg-rose-100/80 text-rose-800 border border-rose-200 text-[11px] px-2 py-0.5 rounded-md font-bold">
+                                            ${iss.criterion}: <span class="text-rose-950">${iss.val}</span>
+                                        </span>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2 self-start md:self-center">
+                            ${item.quantity ? `<span class="bg-amber-100 text-amber-950 border border-amber-300 px-3 py-1.5 rounded-xl font-extrabold text-xs shadow-sm">الكمية المطلوبة: ${item.quantity}</span>` : '<span class="text-slate-400 italic text-xs">لم تحدد الكمية</span>'}
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                critListEl.innerHTML = '<p class="text-emerald-600 font-bold">🎉 لا يوجد أي عناصر حرجة أو مخاطر مرصودة حتى الآن.</p>';
+            }
+        }
+
+        function computeSchoolSystemsBreakdown(savedAnswers) {
+            let systemScores = [];
+            let schoolWeightedScoreSum = 0;
+            let schoolActiveWeightSum = 0;
+
+            systemsData.forEach((sys, sysIdx) => {
+                let activeElemWeightSum = 0;
+                let activeElemWeightedScoreSum = 0;
+
+                sys.elements.forEach((elem, elemIdx) => {
+                    const elemAns = savedAnswers && savedAnswers[sysIdx] && savedAnswers[sysIdx][elemIdx] ? savedAnswers[sysIdx][elemIdx] : {};
+                    let scores = [];
+
+                    Object.keys(assessmentCriteria).forEach(critKey => {
+                        const selVal = elemAns[critKey];
+                        const opts = getCriteriaOptions(sysIdx, critKey);
+                        if (selVal && opts[selVal]) {
+                            const info = opts[selVal];
+                            if (info.score !== null) {
+                                scores.push(info.score);
+                            }
+                        }
+                    });
+
+                    if (scores.length > 0) {
+                        let elemAvgScore = scores.reduce((a, b) => a + b, 0) / scores.length;
+                        activeElemWeightedScoreSum += elemAvgScore * elem.weight;
+                        activeElemWeightSum += elem.weight;
+                    }
+                });
+
+                let systemScore = activeElemWeightSum > 0 ? (activeElemWeightedScoreSum / activeElemWeightSum) : null;
+                systemScores.push(systemScore);
+
+                if (systemScore !== null) {
+                    schoolWeightedScoreSum += systemScore * sys.weight;
+                    schoolActiveWeightSum += sys.weight;
+                }
+            });
+
+            let overallScore = schoolActiveWeightSum > 0 ? (schoolWeightedScoreSum / schoolActiveWeightSum) : 0;
+            return { systemScores, overallScore };
+        }
+
+        function resetAnalyticsFilters() {
+            const sInput = document.getElementById('analyticsSearchInput');
+            const fSelect = document.getElementById('analyticsStatusFilter');
+            if (sInput) sInput.value = '';
+            if (fSelect) fSelect.value = 'all';
+            renderAnalyticsDashboard();
+        }
+
+        function renderAnalyticsDashboard() {
+            const registry = getRegistryFromStorage();
+            const totalCount = registry.length;
+
+            document.getElementById('analytics_totalSchools').innerText = `${totalCount} مدرسة`;
+
+            if (totalCount === 0) {
+                document.getElementById('analytics_avgScore').innerText = '0.00%';
+                document.getElementById('analytics_topSchool').innerText = '-';
+                document.getElementById('analytics_topScore').innerText = '0.00%';
+                document.getElementById('analytics_lowSchool').innerText = '-';
+                document.getElementById('analytics_lowScore').innerText = '0.00%';
+                
+                document.getElementById('analytics_systemsBreakdown').innerHTML = `
+                    <div class="col-span-full text-center p-8 bg-slate-50 border border-slate-200 rounded-2xl text-slate-400 font-bold italic">
+                        لا توجد مدارس حفظت بالسجل حتى الآن لعرض القائمة والتحليلات الفنية. قم بحفظ تقييمات المدارس أولاً.
+                    </div>
+                `;
+                document.getElementById('analyticsTableBody').innerHTML = `
+                    <tr>
+                        <td colspan="12" class="text-center p-8 text-slate-400 italic font-bold">
+                            لا توجد بيانات مدارس محفوظة لعرضها في قائمة المدارس.
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            let schoolBreakdowns = registry.map(rec => {
+                const bd = computeSchoolSystemsBreakdown(rec.answers || {});
+                return {
+                    id: rec.id,
+                    name: rec.schoolName,
+                    location: rec.schoolLocation,
+                    evaluator: rec.evaluatorName,
+                    date: rec.date || new Date().toLocaleDateString('ar-EG'),
+                    systemScores: bd.systemScores,
+                    overallScore: bd.overallScore
+                };
+            });
+
+            let sumOverall = schoolBreakdowns.reduce((acc, s) => acc + s.overallScore, 0);
+            let avgOverall = sumOverall / totalCount;
+            document.getElementById('analytics_avgScore').innerText = `${(avgOverall * 100).toFixed(2)}%`;
+
+            let sorted = [...schoolBreakdowns].sort((a, b) => b.overallScore - a.overallScore);
+            let topSchool = sorted[0];
+            let lowSchool = sorted[sorted.length - 1];
+
+            document.getElementById('analytics_topSchool').innerText = topSchool.name;
+            document.getElementById('analytics_topScore').innerText = `${(topSchool.overallScore * 100).toFixed(2)}%`;
+
+            document.getElementById('analytics_lowSchool').innerText = lowSchool.name;
+            document.getElementById('analytics_lowScore').innerText = `${(lowSchool.overallScore * 100).toFixed(2)}%`;
+
+            let sysAverages = systemsData.map((sys, sysIdx) => {
+                let validScores = schoolBreakdowns.map(s => s.systemScores[sysIdx]).filter(sc => sc !== null);
+                if (validScores.length === 0) return 0;
+                return validScores.reduce((a, b) => a + b, 0) / validScores.length;
+            });
+
+            document.getElementById('analytics_systemsBreakdown').innerHTML = systemsData.map((sys, sysIdx) => {
+                let avg = sysAverages[sysIdx];
+                let percent = (avg * 100).toFixed(1);
+                let theme = getRatingStatusTheme(avg, true);
+
+                return `
+                    <div class="bg-white p-4 rounded-2xl border ${theme.bgClass} shadow-sm text-center">
+                        <div class="text-xs font-black text-slate-600 mb-1">${sys.name} (${(sys.weight * 100)}%)</div>
+                        <div class="text-2xl font-black ${theme.textColor} mb-2">${percent}%</div>
+                        <div class="w-full bg-slate-200/70 h-2 rounded-full overflow-hidden mb-2">
+                            <div class="${theme.barClass} h-full" style="width: ${percent}%"></div>
+                        </div>
+                        <span class="inline-block px-2.5 py-0.5 rounded-full text-[10px] ${theme.badgeClass}">${theme.text}</span>
+                    </div>
+                `;
+            }).join('');
+
+            const searchVal = (document.getElementById('analyticsSearchInput')?.value || '').toLowerCase().trim();
+            const statusFilter = document.getElementById('analyticsStatusFilter')?.value || 'all';
+
+            let filteredSchools = schoolBreakdowns.filter(s => {
+                const matchesSearch = s.name.toLowerCase().includes(searchVal) || 
+                                      s.location.toLowerCase().includes(searchVal) ||
+                                      s.evaluator.toLowerCase().includes(searchVal);
+                
+                let matchesStatus = true;
+                if (statusFilter === 'good') matchesStatus = s.overallScore >= 0.85;
+                else if (statusFilter === 'moderate') matchesStatus = s.overallScore >= 0.60 && s.overallScore < 0.85;
+                else if (statusFilter === 'weak') matchesStatus = s.overallScore >= 0.35 && s.overallScore < 0.60;
+                else if (statusFilter === 'critical') matchesStatus = s.overallScore < 0.35;
+
+                return matchesSearch && matchesStatus;
+            });
+
+            if (filteredSchools.length === 0) {
+                document.getElementById('analyticsTableBody').innerHTML = `
+                    <tr>
+                        <td colspan="12" class="text-center p-8 text-slate-400 italic font-bold">
+                            لا توجد نتائج تطابق خيارات البحث والفلترة المحددة.
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            document.getElementById('analyticsTableBody').innerHTML = filteredSchools.map((s, idx) => {
+                let overallPercent = (s.overallScore * 100).toFixed(2);
+                let overallTheme = getRatingStatusTheme(s.overallScore, true);
+
+                let sysCells = s.systemScores.map((sc, sIdx) => {
+                    if (sc === null) return `<td class="p-3 text-center text-slate-400 italic">N/A</td>`;
+                    let sysPercent = (sc * 100).toFixed(1);
+                    let sysTheme = getRatingStatusTheme(sc, true);
+                    return `
+                        <td class="p-3 text-center">
+                            <span class="inline-block px-2 py-1 rounded-lg text-xs font-black ${sysTheme.badgeClass}">
+                                ${sysPercent}%
+                            </span>
+                        </td>
+                    `;
+                }).join('');
+
+                return `
+                    <tr class="hover:bg-slate-50 border-b border-slate-100 transition">
+                        <td class="p-3 font-bold text-slate-400">${idx + 1}</td>
+                        <td class="p-3 font-black text-slate-900">${s.name}</td>
+                        <td class="p-3 text-slate-600 text-xs">${s.location}</td>
+                        <td class="p-3 text-slate-500 text-xs">${s.date}</td>
+                        ${sysCells}
+                        <td class="p-3 text-center font-black text-amber-600 text-sm">${overallPercent}%</td>
+                        <td class="p-3 text-center">
+                            <span class="${overallTheme.badgeClass}">${overallTheme.text}</span>
+                        </td>
+                        <td class="p-3 text-center space-x-1 space-x-reverse whitespace-nowrap">
+                            <button onclick="loadSchoolFromRegistry('${s.id}')" class="bg-blue-600 hover:bg-blue-700 text-white px-2.5 py-1 rounded-lg text-xs font-bold transition shadow-sm">
+                                <i class="fa-solid fa-folder-open"></i> فتح
+                            </button>
+                            <button onclick="deleteSchoolFromAnalytics('${s.id}')" title="حذف المدرسة" class="bg-rose-600 hover:bg-rose-700 text-white px-2.5 py-1 rounded-lg text-xs font-bold transition shadow-sm">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function deleteSchoolFromAnalytics(id) {
+            if (!confirm('⚠️ هل أنت تأكد من رغبتك في حذف هذه المدرسة من السجل والقائمة؟')) return;
+            let registry = getRegistryFromStorage();
+            registry = registry.filter(item => item.id !== id);
+            saveRegistryToStorage(registry);
+            renderAnalyticsDashboard();
+            renderRegistryTable();
+        }
+
+        function startNewSchoolAssessment() {
+            if (Object.keys(answers).length > 0) {
+                if (!confirm('⚠️ هل أنت تأكد من البدء بتقييم مدرسة جديدة؟ سيتم تفريغ كافة التقييمات الحالية بالنموذج.')) {
+                    return;
+                }
+            }
+
+            currentSchoolId = null;
+            document.getElementById('schoolName').value = '';
+            document.getElementById('schoolLocation').value = '';
+            document.getElementById('evaluatorName').value = '';
+            answers = {};
+
+            systemsData.forEach((sys, sysIdx) => {
+                sys.elements.forEach((elem, elemIdx) => {
+                    renderElementPhotoPreview(sysIdx, elemIdx, null);
+                    const qtyInput = document.getElementById(`qtyInput_${sysIdx}_${elemIdx}`);
+                    if (qtyInput) {
+                        qtyInput.value = '';
+                        qtyInput.disabled = true;
+                        qtyInput.placeholder = "تتنشّط الخانة للبنود الضعيفة أو الحرجة...";
+                        qtyInput.classList.add('opacity-50', 'bg-slate-100', 'cursor-not-allowed');
+                    }
+
+                    const photoBtn = document.getElementById(`photoBtn_${sysIdx}_${elemIdx}`);
+                    const imgInput = document.getElementById(`imgInput_${sysIdx}_${elemIdx}`);
+                    if (photoBtn && imgInput) {
+                        imgInput.disabled = false;
+                        photoBtn.classList.remove('opacity-50', 'pointer-events-none', 'cursor-not-allowed');
+                    }
+
+                    Object.keys(assessmentCriteria).forEach(critKey => {
+                        const selectEl = document.getElementById(`sel_${sysIdx}_${elemIdx}_${critKey}`);
+                        if (selectEl) {
+                            selectEl.value = '';
+                            selectEl.disabled = false;
+                            selectEl.classList.remove('option-green', 'option-yellow', 'option-red', 'option-na', 'opacity-50', 'bg-slate-100', 'cursor-not-allowed');
+                        }
+                    });
+                });
+            });
+
+            calculateScores();
+            switchTab('master');
+            alert('✨ تم فتح نموذج جديد لتقييم مدرسة أخرى!');
+        }
+
+        function getRegistryFromStorage() {
+            const data = localStorage.getItem('schoolRegistryHistory');
+            return data ? JSON.parse(data) : [];
+        }
+
+        function saveRegistryToStorage(registry) {
+            localStorage.setItem('schoolRegistryHistory', JSON.stringify(registry));
+        }
+
+        function saveCurrentSchoolToRegistry() {
+            const sName = document.getElementById('schoolName').value.trim();
+            if (!sName) {
+                alert('⚠️ يرجى إدخال اسم المدرسة أولاً للحفظ في السجل.');
+                return;
+            }
+
+            const sLocation = document.getElementById('schoolLocation').value.trim() || 'غير محدد';
+            const eName = document.getElementById('evaluatorName').value.trim() || 'غير محدد';
+            
+            const scoreText = document.getElementById('masterScoreText').innerText;
+            const badgeText = document.getElementById('masterBadge').innerText;
+            const badgeClass = document.getElementById('masterBadge').className;
+
+            let registry = getRegistryFromStorage();
+
+            const record = {
+                id: currentSchoolId || 'SCH-' + Date.now(),
+                schoolName: sName,
+                schoolLocation: sLocation,
+                evaluatorName: eName,
+                date: new Date().toLocaleDateString('ar-EG') + ' - ' + new Date().toLocaleTimeString('ar-EG', {hour: '2-digit', minute:'2-digit'}),
+                overallScore: scoreText,
+                badgeText: badgeText,
+                badgeClass: badgeClass,
+                answers: JSON.parse(JSON.stringify(answers))
+            };
+
+            const existingIdx = registry.findIndex(item => item.id === record.id);
+            if (existingIdx >= 0) {
+                registry[existingIdx] = record;
+            } else {
+                registry.unshift(record);
+            }
+
+            currentSchoolId = record.id;
+            saveRegistryToStorage(registry);
+            renderRegistryTable();
+
+            alert(`✅ تم حفظ تقييم مدرسة (${sName}) بنجاح في السجل!`);
+        }
+
+        function renderRegistryTable() {
+            const registry = getRegistryFromStorage();
+            const tbody = document.getElementById('registryTableBody');
+            const searchVal = (document.getElementById('registrySearchInput')?.value || '').toLowerCase();
+
+            const filtered = registry.filter(item => 
+                item.schoolName.toLowerCase().includes(searchVal) ||
+                item.schoolLocation.toLowerCase().includes(searchVal) ||
+                item.evaluatorName.toLowerCase().includes(searchVal)
+            );
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="8" class="text-center p-6 text-slate-400 italic">
+                            لا توجد مدارس مقيّمة مسبقاً في السجل حتى الآن.
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = filtered.map((item, idx) => `
+                <tr class="hover:bg-slate-50 border-b border-slate-100 transition">
+                    <td class="p-3 font-bold text-slate-400">${idx + 1}</td>
+                    <td class="p-3 font-extrabold text-slate-900">${item.schoolName}</td>
+                    <td class="p-3 text-slate-600">${item.schoolLocation}</td>
+                    <td class="p-3 text-slate-600">${item.evaluatorName}</td>
+                    <td class="p-3 text-slate-500 text-xs">${item.date}</td>
+                    <td class="p-3 text-center font-black text-amber-600 text-sm">${item.overallScore}</td>
+                    <td class="p-3 text-center">
+                        <span class="${item.badgeClass}">${item.badgeText}</span>
+                    </td>
+                    <td class="p-3 text-center space-x-1 space-x-reverse">
+                        <button onclick="loadSchoolFromRegistry('${item.id}')" class="bg-blue-600 hover:bg-blue-700 text-white px-2.5 py-1 rounded-lg text-xs font-bold transition">
+                            <i class="fa-solid fa-folder-open"></i> فتح
+                        </button>
+                        <button onclick="deleteSchoolFromRegistry('${item.id}')" class="bg-rose-600 hover:bg-rose-700 text-white px-2.5 py-1 rounded-lg text-xs font-bold transition">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function loadSchoolFromRegistry(id) {
+            const registry = getRegistryFromStorage();
+            const record = registry.find(item => item.id === id);
+            if (!record) return;
+
+            currentSchoolId = record.id;
+            document.getElementById('schoolName').value = record.schoolName;
+            document.getElementById('schoolLocation').value = record.schoolLocation;
+            document.getElementById('evaluatorName').value = record.evaluatorName;
+            
+            answers = JSON.parse(JSON.stringify(record.answers || {}));
+
+            systemsData.forEach((sys, sysIdx) => {
+                sys.elements.forEach((elem, elemIdx) => {
+                    const elemAns = answers[sysIdx] && answers[sysIdx][elemIdx] ? answers[sysIdx][elemIdx] : {};
+                    renderElementPhotoPreview(sysIdx, elemIdx, elemAns.photo || null);
+                    
+                    const qtyInput = document.getElementById(`qtyInput_${sysIdx}_${elemIdx}`);
+                    if (qtyInput) qtyInput.value = elemAns.quantity || '';
+
+                    Object.keys(assessmentCriteria).forEach(critKey => {
+                        const selectEl = document.getElementById(`sel_${sysIdx}_${elemIdx}_${critKey}`);
+                        if (selectEl) {
+                            const val = elemAns[critKey] || '';
+                            selectEl.value = val;
+                            onCriteriaChange(sysIdx, elemIdx, critKey, selectEl);
+                        }
+                    });
+                });
+            });
+
+            calculateScores();
+            switchTab('master');
+            alert(`📂 تم تحميل تقييم (${record.schoolName}) بنجاح.`);
+        }
+
+        function deleteSchoolFromRegistry(id) {
+            if (!confirm('⚠️ هل أنت تأكد من رغبتك في حذف هذا التقييم من السجل؟')) return;
+            let registry = getRegistryFromStorage();
+            registry = registry.filter(item => item.id !== id);
+            saveRegistryToStorage(registry);
+            renderRegistryTable();
+            renderAnalyticsDashboard();
+        }
+
+        function clearRegistryHistory() {
+            if (!confirm('⚠️ هل أنت تأكد من مسح جميع التقييمات المحفوظة في السجل؟')) return;
+            localStorage.removeItem('schoolRegistryHistory');
+            renderRegistryTable();
+            renderAnalyticsDashboard();
+        }
+
+        function fillDemoData() {
+            currentSchoolId = null;
+            document.getElementById('schoolName').value = 'مدرسة الأمل الابتدائية';
+            document.getElementById('schoolLocation').value = 'الرياض - حي الملك فهد';
+            document.getElementById('evaluatorName').value = 'م. أحمد العتيبي';
+
+            systemsData.forEach((sys, sysIdx) => {
+                if (!answers[sysIdx]) answers[sysIdx] = {};
+                sys.elements.forEach((elem, elemIdx) => {
+                    if (!answers[sysIdx][elemIdx]) answers[sysIdx][elemIdx] = {};
+                    
+                    const optsVisual = Object.keys(getCriteriaOptions(sysIdx, 'الفحص_البصري'));
+                    let selectedVisual = optsVisual[0];
+                    const rand = Math.random();
+                    if (rand > 0.85) selectedVisual = optsVisual[3];
+                    else if (rand > 0.70) selectedVisual = optsVisual[2];
+                    else if (rand > 0.60) selectedVisual = 'لا ينطبق';
+
+                    const visualSelect = document.getElementById(`sel_${sysIdx}_${elemIdx}_الفحص_البصري`);
+                    if (visualSelect) {
+                        visualSelect.value = selectedVisual;
+                        onCriteriaChange(sysIdx, elemIdx, 'الفحص_البصري', visualSelect);
+                    }
+
+                    if (selectedVisual !== 'لا ينطبق') {
+                        Object.keys(assessmentCriteria).forEach(critKey => {
+                            if (critKey !== 'الفحص_البصري') {
+                                const opts = Object.keys(getCriteriaOptions(sysIdx, critKey));
+                                let selOpt = opts[0];
+                                if (Math.random() > 0.8) selOpt = opts[1];
+                                const selectEl = document.getElementById(`sel_${sysIdx}_${elemIdx}_${critKey}`);
+                                if (selectEl) {
+                                    selectEl.value = selOpt;
+                                    onCriteriaChange(sysIdx, elemIdx, critKey, selectEl);
+                                }
+                            }
+                        });
+
+                        if (rand > 0.85) {
+                            answers[sysIdx][elemIdx].quantity = '15 متر/قطعة';
+                            const qtyInput = document.getElementById(`qtyInput_${sysIdx}_${elemIdx}`);
+                            if (qtyInput) qtyInput.value = '15 متر/قطعة';
+                        }
+                    }
+                });
+            });
+
+            calculateScores();
+        }
+
+        function exportJSON() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({
+                schoolName: document.getElementById('schoolName').value,
+                schoolLocation: document.getElementById('schoolLocation').value,
+                evaluatorName: document.getElementById('evaluatorName').value,
+                date: new Date().toISOString(),
+                answers: answers
+            }, null, 2));
+            const dl = document.createElement('a');
+            dl.setAttribute("href", dataStr);
+            dl.setAttribute("download", `school_assessment_${Date.now()}.json`);
+            document.body.appendChild(dl);
+            dl.click();
+            dl.remove();
+        }
+
+        window.onload = initApp;
+    </script>
+</body>
+</html>
