@@ -20,33 +20,51 @@ st.set_page_config(
 
 
 # ============================================
-# تحميل ومعالجة البيانات
+# تحميل ومعالجة البيانات بشكل ذكي
 # ============================================
 @st.cache_data
 def load_all_data():
-  """تحميل جميع البيانات من ملف الإكسل"""
+  """تحميل جميع البيانات من ملف الإكسل بشكل مرن يتعرف على أسماء الشيتات تلقائياً"""
   try:
-    df_projects = pd.read_excel(
-        "جميع المشاريع.xlsx", sheet_name="مدراء المشاريع", header=1
-    )
-    df_summary = pd.read_excel(
-        "جميع المشاريع.xlsx", sheet_name="ملخص مستخلصات المشاريع", header=2
-    )
-    df_report = pd.read_excel(
-        "جميع المشاريع.xlsx", sheet_name="تقرير عام المشاريع", header=2
-    )
+    file_path = "جميع المشاريع.xlsx"
+    xls = pd.ExcelFile(file_path)
+    sheet_names = xls.sheet_names
 
+    # 1. البحث عن شيت مدراء المشاريع
+    project_sheet = next(
+        (s for s in sheet_names if "مدراء" in s or "المشاريع" in s),
+        sheet_names[0],
+    )
+    df_projects = pd.read_excel(xls, sheet_name=project_sheet, header=1)
     df_projects = df_projects.dropna(how="all")
-    df_projects.columns = [
-        "م",
-        "المشروع",
-        "مدير_المشروع",
-        "الحالة",
-        "رقم_التواصل",
-        "الإيميل",
-    ]
+    if len(df_projects.columns) >= 6:
+      df_projects = df_projects.iloc[:, :6]
+      df_projects.columns = [
+          "م",
+          "المشروع",
+          "مدير_المشروع",
+          "الحالة",
+          "رقم_التواصل",
+          "الإيميل",
+      ]
     df_projects = df_projects[df_projects["م"].notna()]
-    df_projects["م"] = df_projects["م"].astype(int)
+    df_projects["م"] = pd.to_numeric(df_projects["م"], errors="coerce")
+
+    # 2. البحث عن شيت التقرير العام
+    report_sheet = next(
+        (
+            s
+            for s in sheet_names
+            if "تقرير" in s or "عام" in s or "التقرير" in s
+        ),
+        None,
+    )
+    if report_sheet:
+      df_report = pd.read_excel(xls, sheet_name=report_sheet, header=2)
+    elif len(sheet_names) > 1:
+      df_report = pd.read_excel(xls, sheet_name=sheet_names[1], header=2)
+    else:
+      df_report = pd.DataFrame()
 
     df_report = df_report.dropna(how="all")
     if len(df_report.columns) >= 14:
@@ -69,16 +87,25 @@ def load_all_data():
       ]
 
     df_report = df_report[df_report["م"].notna()]
-    df_report["م"] = df_report["م"].astype(int)
+    df_report["م"] = pd.to_numeric(df_report["م"], errors="coerce")
 
     for col in ["القيمة_الاجمالية", "ما_تم_رفعه", "ما_تم_صرفه", "المتبقي"]:
       if col in df_report.columns:
         df_report[col] = pd.to_numeric(df_report[col], errors="coerce")
 
-    try:
-      df_south = pd.read_excel(
-          "جميع المشاريع.xlsx", sheet_name="الجنوبية TBC", header=2
-      )
+    # 3. البحث عن شيت المستخلصات
+    summary_sheet = next(
+        (s for s in sheet_names if "مستخلصات" in s or "ملخص" in s), None
+    )
+    df_summary = (
+        pd.read_excel(xls, sheet_name=summary_sheet, header=2)
+        if summary_sheet
+        else pd.DataFrame()
+    )
+
+    south_sheet = next((s for s in sheet_names if "الجنوبية" in s), None)
+    if south_sheet:
+      df_south = pd.read_excel(xls, sheet_name=south_sheet, header=2)
       df_south = df_south.dropna(how="all")
       if len(df_south.columns) >= 8:
         df_south = df_south.iloc[:, :8]
@@ -97,22 +124,22 @@ def load_all_data():
             df_south["قيمة_المستخلص"], errors="coerce"
         )
         df_south["المشروع"] = "الجنوبية"
-    except:
+    else:
       df_south = pd.DataFrame()
 
     return df_projects, df_summary, df_report, df_south
 
-  except FileNotFoundError:
+  except Exception as e:
     st.error(
-        "⚠️ ملف 'جميع المشاريع.xlsx' غير موجود في المستودع. يرجى رفعه بجانب"
-        " ملف الكود."
+        f"⚠️ يتعذر إيجاد ملف الإكسل 'جميع المشاريع.xlsx' في المستودع. تأكد من"
+        f" رفعه بنفس الاسم. التفاصيل: {e}"
     )
     return None, None, None, None
 
 
 df_projects, df_summary, df_report, df_south = load_all_data()
 
-if df_projects is None:
+if df_projects is None or df_projects.empty:
   st.stop()
 
 
@@ -120,27 +147,32 @@ if df_projects is None:
 # حساب المؤشرات الرئيسية (KPIs)
 # ============================================
 def calculate_kpis():
-  if df_report.empty:
+  if df_report is None or df_report.empty:
     return {}
 
-  total_contracts = df_report["القيمة_الاجمالية"].sum()
-  total_raised = df_report["ما_تم_رفعه"].sum()
-  total_paid = df_report["ما_تم_صرفه"].sum()
-  total_remaining = df_report["المتبقي"].sum()
+  total_contracts = (
+      df_report["القيمة_الاجمالية"].sum()
+      if "القيمة_الاجمالية" in df_report.columns
+      else 0
+  )
+  total_raised = (
+      df_report["ما_تم_رفعه"].sum() if "ما_تم_رفعه" in df_report.columns else 0
+  )
+  total_paid = (
+      df_report["ما_تم_صرفه"].sum() if "ما_تم_صرفه" in df_report.columns else 0
+  )
+  total_remaining = (
+      df_report["المتبقي"].sum() if "المتبقي" in df_report.columns else 0
+  )
 
   active_projects = (
       len(df_projects[df_projects["الحالة"] == "جاري"])
-      if not df_projects.empty
+      if "الحالة" in df_projects.columns
       else 0
   )
   completed_projects = (
       len(df_projects[df_projects["الحالة"] == "منتهي"])
-      if not df_projects.empty
-      else 0
-  )
-  not_started = (
-      len(df_projects[df_projects["الحالة"] == "لم يبدأ"])
-      if not df_projects.empty
+      if "الحالة" in df_projects.columns
       else 0
   )
 
@@ -151,7 +183,6 @@ def calculate_kpis():
       "total_remaining": total_remaining,
       "active_projects": active_projects,
       "completed_projects": completed_projects,
-      "not_started": not_started,
       "total_projects": len(df_projects),
   }
 
@@ -176,29 +207,28 @@ st.markdown(
 # ===== الشريط الجانبي =====
 with st.sidebar:
   st.markdown("### 🔍 تصفية البيانات")
+  status_options = (
+      ["الكل"] + list(df_projects["الحالة"].dropna().unique())
+      if "الحالة" in df_projects.columns
+      else ["الكل"]
+  )
   status_filter = st.multiselect(
-      "حالة المشروع",
-      options=(
-          ["الكل"] + list(df_projects["الحالة"].unique())
-          if not df_projects.empty
-          else ["الكل"]
-      ),
-      default=["الكل"],
+      "حالة المشروع", options=status_options, default=["الكل"]
   )
 
-  managers = (
-      ["الكل"] + list(df_projects["مدير_المشروع"].unique())
-      if not df_projects.empty
+  manager_options = (
+      ["الكل"] + list(df_projects["مدير_المشروع"].dropna().unique())
+      if "مدير_المشروع" in df_projects.columns
       else ["الكل"]
   )
-  manager_filter = st.selectbox("مدير المشروع", options=managers)
+  manager_filter = st.selectbox("مدير المشروع", options=manager_options)
 
-  owners = (
-      ["الكل"] + list(df_report["الجهة"].unique())
-      if not df_report.empty
+  owner_options = (
+      ["الكل"] + list(df_report["الجهة"].dropna().unique())
+      if "الجهة" in df_report.columns
       else ["الكل"]
   )
-  owner_filter = st.selectbox("الجهة المالكة", options=owners)
+  owner_filter = st.selectbox("الجهة المالكة", options=owner_options)
 
   st.divider()
   st.markdown("### 📈 إحصائيات سريعة")
@@ -239,16 +269,16 @@ filtered_projects = df_projects.copy()
 filtered_report = df_report.copy()
 
 if not filtered_projects.empty:
-  if "الكل" not in status_filter:
+  if "الكل" not in status_filter and "الحالة" in filtered_projects.columns:
     filtered_projects = filtered_projects[
         filtered_projects["الحالة"].isin(status_filter)
     ]
-  if manager_filter != "الكل":
+  if manager_filter != "الكل" and "مدير_المشروع" in filtered_projects.columns:
     filtered_projects = filtered_projects[
         filtered_projects["مدير_المشروع"] == manager_filter
     ]
-  if not filtered_report.empty:
-    if owner_filter != "الكل":
+  if not filtered_report.empty and owner_filter != "الكل":
+    if "الجهة" in filtered_report.columns:
       filtered_report = filtered_report[
           filtered_report["الجهة"] == owner_filter
       ]
@@ -258,7 +288,11 @@ st.markdown("### 📊 التحليل المالي للمشاريع")
 col1, col2 = st.columns([2, 1])
 
 with col1:
-  if not filtered_report.empty:
+  if (
+      not filtered_report.empty
+      and "المشروع" in filtered_report.columns
+      and "القيمة_الاجمالية" in filtered_report.columns
+  ):
     plot_df = filtered_report[filtered_report["المشروع"].notna()].copy().head(20)
     fig1 = go.Figure()
     fig1.add_trace(
@@ -271,26 +305,28 @@ with col1:
             textposition="outside",
         )
     )
-    fig1.add_trace(
-        go.Bar(
-            x=plot_df["المشروع"],
-            y=plot_df["ما_تم_صرفه"],
-            name="المصرُوف",
-            marker_color="#2e7d32",
-            text=plot_df["ما_تم_صرفه"].apply(lambda x: f"{x:,.0f}"),
-            textposition="outside",
-        )
-    )
-    fig1.add_trace(
-        go.Bar(
-            x=plot_df["المشروع"],
-            y=plot_df["المتبقي"],
-            name="المتبقي",
-            marker_color="#e65100",
-            text=plot_df["المتبقي"].apply(lambda x: f"{x:,.0f}"),
-            textposition="outside",
-        )
-    )
+    if "ما_تم_صرفه" in plot_df.columns:
+      fig1.add_trace(
+          go.Bar(
+              x=plot_df["المشروع"],
+              y=plot_df["ما_تم_صرفه"],
+              name="المصرُوف",
+              marker_color="#2e7d32",
+              text=plot_df["ما_تم_صرفه"].apply(lambda x: f"{x:,.0f}"),
+              textposition="outside",
+          )
+      )
+    if "المتبقي" in plot_df.columns:
+      fig1.add_trace(
+          go.Bar(
+              x=plot_df["المشروع"],
+              y=plot_df["المتبقي"],
+              name="المتبقي",
+              marker_color="#e65100",
+              text=plot_df["المتبقي"].apply(lambda x: f"{x:,.0f}"),
+              textposition="outside",
+          )
+      )
     fig1.update_layout(
         barmode="group",
         xaxis_tickangle=-30,
@@ -302,7 +338,7 @@ with col1:
     st.plotly_chart(fig1, use_container_width=True)
 
 with col2:
-  if not filtered_projects.empty:
+  if not filtered_projects.empty and "الحالة" in filtered_projects.columns:
     status_counts = filtered_projects["الحالة"].value_counts()
     colors = {"جاري": "#4CAF50", "منتهي": "#2196F3", "لم يبدأ": "#FF9800"}
     fig2 = px.pie(
@@ -320,13 +356,19 @@ st.divider()
 
 # ===== الجدول التفصيلي =====
 st.markdown("### 📋 قائمة المشاريع التفصيلية")
-if not filtered_projects.empty and not filtered_report.empty:
+if (
+    not filtered_projects.empty
+    and not filtered_report.empty
+    and "م" in filtered_projects.columns
+    and "م" in filtered_report.columns
+):
+  cols_to_merge = [
+      c
+      for c in ["م", "القيمة_الاجمالية", "ما_تم_صرفه", "المتبقي", "الجهة"]
+      if c in filtered_report.columns
+  ]
   merged_df = filtered_projects.merge(
-      filtered_report[
-          ["م", "القيمة_الاجمالية", "ما_تم_صرفه", "المتبقي", "الجهة"]
-      ],
-      on="م",
-      how="left",
+      filtered_report[cols_to_merge], on="م", how="left"
   )
 else:
   merged_df = filtered_projects
@@ -334,22 +376,26 @@ else:
 search = st.text_input(
     "🔍 بحث سريع عن مشروع", placeholder="اكتب اسم المشروع..."
 )
-if search and not merged_df.empty:
+if search and not merged_df.empty and "المشروع" in merged_df.columns:
   merged_df = merged_df[
       merged_df["المشروع"].str.contains(search, case=False, na=False)
   ]
 
 if not merged_df.empty:
   cols_to_show = [
-      "م",
-      "المشروع",
-      "مدير_المشروع",
-      "الحالة",
-      "القيمة_الاجمالية",
-      "ما_تم_صرفه",
-      "المتبقي",
+      c
+      for c in [
+          "م",
+          "المشروع",
+          "مدير_المشروع",
+          "الحالة",
+          "القيمة_الاجمالية",
+          "ما_تم_صرفه",
+          "المتبقي",
+      ]
+      if c in merged_df.columns
   ]
-  if "الجهة" in merged_df.columns:
+  if "الجهة" in merged_df.columns and "الجهة" not in cols_to_show:
     cols_to_show.insert(3, "الجهة")
 
   display_df = merged_df[cols_to_show].copy()
