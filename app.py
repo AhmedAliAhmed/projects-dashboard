@@ -9,7 +9,7 @@ import os
 # 1. إعداد الصفحة وتنسيق الخطوط (RTL)
 # ============================================
 st.set_page_config(
-    page_title="لوحة مستخلصات أداء المشاريع - شركة العمران المتقدم",
+    page_title="الموقف المالي لمستخلصات المشاريع - شركة العمران المتقدم",
     page_icon="📈",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -49,6 +49,13 @@ st.markdown("""
     .stDataFrame {
         border-radius: 10px;
         overflow: hidden;
+    }
+
+    div.stButton > button:first-child {
+        background-color: #009640 !important;
+        color: white !important;
+        font-weight: bold !important;
+        border-radius: 8px !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -129,20 +136,42 @@ def load_data(uploaded_file):
 
 
 # ============================================
-# 4. مولد التقرير التنفيذي PDF للطباعة والحفظ
+# 4. مولد التقرير التنفيذي PDF شامل لجميع مكونات الداش بورد
 # ============================================
-def generate_pdf_html(df, total_due, total_paid, total_raised, total_target):
+def generate_full_pdf_html(df, total_due, total_paid, total_raised, total_target):
+    paid_pct = (total_paid / total_due * 100) if total_due > 0 else 0
+    raised_pct = (total_raised / total_due * 100) if total_due > 0 else 0
+    target_pct = (total_target / total_due * 100) if total_due > 0 else 0
+
     rows_html = ""
     for idx, row in df.iterrows():
         rows_html += f"""
         <tr>
-            <td style="padding: 8px; border: 1px solid #cbd5e1; text-align: center;">{row['id']}</td>
-            <td style="padding: 8px; border: 1px solid #cbd5e1; text-align: right; font-weight: bold;">{row['project_name']}</td>
-            <td style="padding: 8px; border: 1px solid #cbd5e1; text-align: left;">{row['total_due']:,.2f} ﷼</td>
-            <td style="padding: 8px; border: 1px solid #cbd5e1; text-align: left;">{row['raised']:,.2f} ﷼</td>
-            <td style="padding: 8px; border: 1px solid #cbd5e1; text-align: left; color: #059669; font-weight: bold;">{row['payment_order_issued']:,.2f} ﷼</td>
-            <td style="padding: 8px; border: 1px solid #cbd5e1; text-align: left; color: #d97706;">{row['target_raised']:,.2f} ﷼</td>
+            <td style="padding: 6px; border: 1px solid #cbd5e1; text-align: center;">{row['id']}</td>
+            <td style="padding: 6px; border: 1px solid #cbd5e1; text-align: right; font-weight: bold;">{row['project_name']}</td>
+            <td style="padding: 6px; border: 1px solid #cbd5e1; text-align: left;">{row['total_due']:,.2f} ﷼</td>
+            <td style="padding: 6px; border: 1px solid #cbd5e1; text-align: left;">{row['raised']:,.2f} ﷼</td>
+            <td style="padding: 6px; border: 1px solid #cbd5e1; text-align: left; color: #059669; font-weight: bold;">{row['payment_order_issued']:,.2f} ﷼</td>
+            <td style="padding: 6px; border: 1px solid #cbd5e1; text-align: left; color: #d97706;">{row['target_raised']:,.2f} ﷼</td>
         </tr>
+        """
+
+    # رسم شريطي توضيحي للمشاريع في الـ PDF
+    project_bars_html = ""
+    for idx, row in df.iterrows():
+        p_pct = (row['payment_order_issued'] / row['total_due'] * 100) if row['total_due'] > 0 else 0
+        r_pct = (row['raised'] / row['total_due'] * 100) if row['total_due'] > 0 else 0
+        t_pct = (row['target_raised'] / row['total_due'] * 100) if row['total_due'] > 0 else 0
+        
+        project_bars_html += f"""
+        <div style="margin-bottom: 8px;">
+            <div style="font-size: 11px; font-weight: bold; margin-bottom: 2px;">{row['id']}. {row['project_name']} ({row['total_due']:,.0f} ﷼)</div>
+            <div style="background: #e2e8f0; height: 10px; border-radius: 5px; overflow: hidden; display: flex;">
+                <div style="width: {p_pct}%; background: #10b981;" title="مدفوع"></div>
+                <div style="width: {r_pct}%; background: #3b82f6;" title="مرفوع"></div>
+                <div style="width: {t_pct}%; background: #f59e0b;" title="مستهدف"></div>
+            </div>
+        </div>
         """
 
     return f"""
@@ -150,51 +179,102 @@ def generate_pdf_html(df, total_due, total_paid, total_raised, total_target):
     <html dir="rtl" lang="ar">
     <head>
         <meta charset="UTF-8">
-        <title>تقرير المستخلصات التنفيذي - شركة العمران المتقدم</title>
+        <title>الموقف المالي لمستخلصات المشاريع - شركة العمران المتقدم</title>
         <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
         <style>
-            body {{ font-family: 'Cairo', sans-serif; padding: 30px; background-color: #fff; color: #0f172a; }}
-            .header {{ display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #009640; padding-bottom: 15px; margin-bottom: 25px; }}
+            @media print {{
+                @page {{ size: A4 portrait; margin: 10mm; }}
+                body {{ background: white !important; -webkit-print-color-adjust: exact; }}
+            }}
+            body {{ font-family: 'Cairo', sans-serif; padding: 20px; background-color: #fff; color: #0f172a; direction: rtl; }}
+            .header {{ display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #009640; padding-bottom: 12px; margin-bottom: 20px; }}
             .title {{ font-size: 22px; font-weight: 800; color: #0f172a; margin: 0; }}
-            .kpi-grid {{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 25px; }}
-            .kpi-card {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; text-align: center; }}
-            .kpi-title {{ font-size: 12px; color: #64748b; margin-bottom: 4px; }}
-            .kpi-value {{ font-size: 16px; font-weight: 700; color: #0f172a; }}
-            table {{ width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 12px; }}
-            th {{ background-color: #0f172a; color: white; padding: 10px; border: 1px solid #0f172a; text-align: center; }}
+            .subtitle {{ font-size: 12px; color: #64748b; margin-top: 3px; }}
+            
+            /* KPI Grid */
+            .kpi-grid {{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px; }}
+            .kpi-card {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; text-align: center; }}
+            .kpi-title {{ font-size: 11px; color: #64748b; margin-bottom: 3px; font-weight: 600; }}
+            .kpi-value {{ font-size: 15px; font-weight: 800; color: #0f172a; }}
+            .kpi-sub {{ font-size: 10px; margin-top: 2px; font-weight: 700; }}
+
+            /* Section Headers */
+            .section-header {{ font-size: 14px; font-weight: 700; color: #1e293b; margin: 18px 0 10px 0; border-right: 4px solid #009640; padding-right: 8px; }}
+            
+            /* Donut Visual Box */
+            .donut-box {{ display: flex; justify-content: space-around; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-bottom: 20px; text-align: center; }}
+            .donut-item {{ flex: 1; }}
+            .badge {{ display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-left: 4px; }}
+
+            /* Table */
+            table {{ width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 10px; }}
+            th {{ background-color: #0f172a; color: white; padding: 8px 4px; border: 1px solid #0f172a; text-align: center; }}
+            td {{ padding: 6px 4px; border: 1px solid #cbd5e1; }}
+            tr:nth-child(even) {{ background-color: #f8fafc; }}
+            .total-row {{ background-color: #f1f5f9; font-weight: bold; font-size: 11px; }}
         </style>
     </head>
     <body onload="window.print()">
         <div class="header">
             <div>
-                <h1 class="title">تقرير المستخلصات المالي التنفيذي</h1>
-                <p style="margin: 3px 0 0 0; color: #64748b; font-size: 13px;">تاريخ الإصدار: {datetime.now().strftime('%Y-%m-%d %H:%M')}</p>
+                <h1 class="title">الموقف المالي لمستخلصات المشاريع</h1>
+                <p class="subtitle">تقرير شامل ومحدث لموقف كافة المستخلصات حتى نهاية شهر أغسطس | تاريخ الإصدار: {datetime.now().strftime('%Y-%m-%d')}</p>
             </div>
             <div style="text-align: left;">
-                <h2 style="margin: 0; color: #009640; font-size: 24px; font-weight: 900;">شركة العمران المتقدم</h2>
-                <span style="font-size: 11px; color: #64748b;">OMRAN ADVANCED COMPANY</span>
+                <h2 style="margin: 0; color: #009640; font-size: 20px; font-weight: 900;">شركة العمران المتقدم</h2>
+                <span style="font-size: 10px; color: #64748b;">OMRAN ADVANCED COMPANY</span>
             </div>
         </div>
 
+        <!-- 1. بطاقات KPIs الرئيسية -->
         <div class="kpi-grid">
             <div class="kpi-card">
-                <div class="kpi-title">إجمالي المستحق</div>
+                <div class="kpi-title">💰 إجمالي المستحق</div>
                 <div class="kpi-value">{total_due:,.2f} ﷼</div>
+                <div class="kpi-sub" style="color: #64748b;">12 مشروعاً</div>
             </div>
             <div class="kpi-card" style="border-top: 3px solid #10b981;">
-                <div class="kpi-title">صدر له أمر دفع</div>
+                <div class="kpi-title">💳 صدر له أمر دفع</div>
                 <div class="kpi-value" style="color: #059669;">{total_paid:,.2f} ﷼</div>
+                <div class="kpi-sub" style="color: #10b981;">{paid_pct:.1f}% من المستحق</div>
             </div>
             <div class="kpi-card" style="border-top: 3px solid #3b82f6;">
-                <div class="kpi-title">مستخلصات مرفوعة</div>
+                <div class="kpi-title">📤 مستخلصات مرفوعة</div>
                 <div class="kpi-value" style="color: #2563eb;">{total_raised:,.2f} ﷼</div>
+                <div class="kpi-sub" style="color: #3b82f6;">{raised_pct:.1f}% من المستحق</div>
             </div>
             <div class="kpi-card" style="border-top: 3px solid #f59e0b;">
-                <div class="kpi-title">مستهدف رفعها</div>
+                <div class="kpi-title">🎯 مستهدف رفعها</div>
                 <div class="kpi-value" style="color: #d97706;">{total_target:,.2f} ﷼</div>
+                <div class="kpi-sub" style="color: #f59e0b;">{target_pct:.1f}% من المستحق</div>
             </div>
         </div>
 
+        <!-- 2. التوزيع المالي الإجمالي -->
+        <div class="section-header">🎯 النسبة الإجمالية لحالة المبالغ الماليات</div>
+        <div class="donut-box">
+            <div class="donut-item">
+                <span class="badge" style="background: #10b981;"></span>
+                <span style="font-weight: bold;">صدر له أمر دفع:</span> {total_paid:,.2f} ﷼ ({paid_pct:.1f}%)
+            </div>
+            <div class="donut-item">
+                <span class="badge" style="background: #3b82f6;"></span>
+                <span style="font-weight: bold;">مرفوع حالياً:</span> {total_raised:,.2f} ﷼ ({raised_pct:.1f}%)
+            </div>
+            <div class="donut-item">
+                <span class="badge" style="background: #f59e0b;"></span>
+                <span style="font-weight: bold;">مستهدف رفعه:</span> {total_target:,.2f} ﷼ ({target_pct:.1f}%)
+            </div>
+        </div>
+
+        <!-- 3. مخطط توزيع المستخلصات تفصيلياً -->
+        <div class="section-header">📊 توزيع نسب المستخلصات لكل مشروع</div>
+        <div style="background: #fafafa; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-bottom: 20px;">
+            {project_bars_html}
+        </div>
+
+        <!-- 4. جدول المستخلصات التفصيلي الكامل -->
+        <div class="section-header">📋 جدول المستخلصات التفصيلي للمشاريع</div>
         <table>
             <thead>
                 <tr>
@@ -208,6 +288,13 @@ def generate_pdf_html(df, total_due, total_paid, total_raised, total_target):
             </thead>
             <tbody>
                 {rows_html}
+                <tr class="total-row">
+                    <td colspan="2" style="text-align: center;">الإجمالي العام</td>
+                    <td style="text-align: left;">{total_due:,.2f} ﷼</td>
+                    <td style="text-align: left;">{total_raised:,.2f} ﷼</td>
+                    <td style="text-align: left; color: #059669;">{total_paid:,.2f} ﷼</td>
+                    <td style="text-align: left; color: #d97706;">{total_target:,.2f} ﷼</td>
+                </tr>
             </tbody>
         </table>
     </body>
@@ -256,22 +343,22 @@ def main():
     with col_logo:
         render_logo()
     with col_head:
-        st.title("📊 لوحة مستخلصات أداء المشاريع")
-        st.caption("شركة العمران المتقدم • موقف المستخلصات حتى نهاية شهر أغسطس")
+        st.title("الموقف المالي لمستخلصات المشاريع")
+        st.caption("شركة العمران المتقدم • موقف المستخلصات التفصيلي حتى نهاية شهر أغسطس")
 
     with col_btn:
         st.markdown("<br>", unsafe_allow_html=True)
         export_pdf = st.button("📄 استخراج التقرير PDF", type="primary", use_container_width=True)
 
-    # زر استخراج PDF بالشريط الجانبي أيضاً
+    # زر استخراج PDF بالشريط الجانبي
     st.sidebar.markdown("---")
     sidebar_pdf = st.sidebar.button("📄 استخراج التقرير PDF", use_container_width=True)
 
-    # تشغيل نافذة الطباعة والحفظ كـ PDF
+    # تشغيل نافذة طباعة التقرير الشامل كـ PDF
     if export_pdf or sidebar_pdf:
         st.info("🖨️ جاري فتح نافذة طباعة وحفظ التقرير بصيغة PDF...")
-        pdf_code = generate_pdf_html(filtered_df, total_due, total_paid, total_raised, total_target)
-        st.components.v1.html(pdf_code, height=650, scrolling=True)
+        pdf_code = generate_full_pdf_html(filtered_df, total_due, total_paid, total_raised, total_target)
+        st.components.v1.html(pdf_code, height=750, scrolling=True)
 
     st.markdown("---")
 
