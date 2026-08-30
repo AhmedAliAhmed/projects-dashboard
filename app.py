@@ -9,7 +9,7 @@ import os
 # 1. إعداد الصفحة وتنسيق الخطوط (RTL)
 # ============================================
 st.set_page_config(
-    page_title="لوحة مستخلصات أداء المشاريع",
+    page_title="لوحة مستخلصات أداء المشاريع - شركة العمران المتقدم",
     page_icon="📈",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -53,112 +53,54 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+
 # ============================================
-# 2. إدراج بيانات المشاريع الفعلية (أغسطس)
+# 2. عرض شعار شركة العمران المتقدم
+# ============================================
+def render_logo():
+    logo_path = "logo.png"
+    assets_logo_path = "assets/logo.png"
+    
+    if os.path.exists(logo_path):
+        st.image(logo_path, width=250)
+    elif os.path.exists(assets_logo_path):
+        st.image(assets_logo_path, width=250)
+    else:
+        # SVG لشعار شركة العمران المتقدم
+        svg_logo = """
+        <div style="background-color: white; padding: 8px 14px; border-radius: 10px; display: inline-block; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 210" width="220" height="92">
+              <text x="10" y="80" font-family="'Cairo', sans-serif" font-weight="900" font-size="82" fill="#2d3136" letter-spacing="1">OMRAN</text>
+              <rect x="10" y="105" width="95" height="24" fill="#009640" rx="2"/>
+              <text x="115" y="125" font-family="'Cairo', sans-serif" font-weight="700" font-size="25" fill="#2d3136" letter-spacing="0.5">ADVANCED COMPANY</text>
+              <text x="490" y="195" font-family="'Cairo', sans-serif" font-weight="700" font-size="44" fill="#4a5568" text-anchor="end">شركة العمران المتقدم</text>
+            </svg>
+        </div>
+        """
+        st.markdown(svg_logo, unsafe_allow_html=True)
+
+
+# ============================================
+# 3. بيانات المشاريع الفعلية (أغسطس)
 # ============================================
 @st.cache_data
 def get_actual_projects_data():
     raw_data = [
-        {
-            "id": 1,
-            "project_name": "تقديم الخدمات الاستشارية لدراسة تطوير خطط تشغيل و صيانة المرافق الهامة",
-            "total_due": 3237150.00,
-            "raised": 0.00,
-            "payment_order_issued": 2608200.00,
-            "target_raised": 628950.00
-        },
-        {
-            "id": 2,
-            "project_name": "الاشراف علي تصميم و انشاء المختبر البيطري المركزي",
-            "total_due": 789063.30,
-            "raised": 0.00,
-            "payment_order_issued": 394531.65,
-            "target_raised": 394531.65
-        },
-        {
-            "id": 3,
-            "project_name": "تقديم الخدمات الاستشارية للاشراف علي المشاريع الهندسية ببنك التنمية",
-            "total_due": 241500.00,
-            "raised": 241500.00,
-            "payment_order_issued": 0.00,
-            "target_raised": 0.00
-        },
-        {
-            "id": 4,
-            "project_name": "الاتفاقية الاطارية لخدمات الاشراف علي مشاريع إدارة المرافق بالمنطقة الوسطي",
-            "total_due": 20152734.68,
-            "raised": 0.00,
-            "payment_order_issued": 6343344.10,
-            "target_raised": 13809390.58
-        },
-        {
-            "id": 5,
-            "project_name": "الاشراف علي إدارة المرافق بالمنطقة الجنوبية",
-            "total_due": 4222488.43,
-            "raised": 0.00,
-            "payment_order_issued": 3222488.43,
-            "target_raised": 1000000.00
-        },
-        {
-            "id": 6,
-            "project_name": "الخدمات الاستشارية للاستفادة من المياه الجوفية و السطحية و مشاريع درء اخطار السيول",
-            "total_due": 4972625.00,
-            "raised": 1752600.00,
-            "payment_order_issued": 2187300.00,
-            "target_raised": 1032725.00
-        },
-        {
-            "id": 7,
-            "project_name": "الاتفاقية الاطارية لتصميم مشاريع المؤسسة العامة للري امر عمل (02)",
-            "total_due": 5398330.00,
-            "raised": 4508000.00,
-            "payment_order_issued": 0.00,
-            "target_raised": 890330.00
-        },
-        {
-            "id": 8,
-            "project_name": "ترميز مباني التراث المعماري وسط الرياض",
-            "total_due": 3910460.00,
-            "raised": 0.00,
-            "payment_order_issued": 0.00,
-            "target_raised": 3910460.00
-        },
-        {
-            "id": 9,
-            "project_name": "دراسة و تصميم مشروع انشاء قاعة الطعام بالمقر الرئيسي",
-            "total_due": 439875.00,
-            "raised": 439875.00,
-            "payment_order_issued": 0.00,
-            "target_raised": 0.00
-        },
-        {
-            "id": 10,
-            "project_name": "مبالغ تم دفعها للهندسية ولم يتم تحصيلها",
-            "total_due": 2864500.00,
-            "raised": 0.00,
-            "payment_order_issued": 0.00,
-            "target_raised": 2864500.00
-        },
-        {
-            "id": 11,
-            "project_name": "الاشراف علي المشاريع الصغيرة بجميع مناطق المملكة (المرحلة الثانية)",
-            "total_due": 2996034.00,
-            "raised": 0.00,
-            "payment_order_issued": 0.00,
-            "target_raised": 2996034.00
-        },
-        {
-            "id": 12,
-            "project_name": "الاتفاقية الاطارية لخدمات الاشراف علي مشاريع إدارة المرافق بالمنطقة الوسطي (2)",
-            "total_due": 3800000.00,
-            "raised": 0.00,
-            "payment_order_issued": 0.00,
-            "target_raised": 3800000.00
-        }
+        {"id": 1, "project_name": "تقديم الخدمات الاستشارية لدراسة تطوير خطط تشغيل و صيانة المرافق الهامة", "total_due": 3237150.00, "raised": 0.00, "payment_order_issued": 2608200.00, "target_raised": 628950.00},
+        {"id": 2, "project_name": "الاشراف علي تصميم و انشاء المختبر البيطري المركزي", "total_due": 789063.30, "raised": 0.00, "payment_order_issued": 394531.65, "target_raised": 394531.65},
+        {"id": 3, "project_name": "تقديم الخدمات الاستشارية للاشراف علي المشاريع الهندسية ببنك التنمية", "total_due": 241500.00, "raised": 241500.00, "payment_order_issued": 0.00, "target_raised": 0.00},
+        {"id": 4, "project_name": "الاتفاقية الاطارية لخدمات الاشراف علي مشاريع إدارة المرافق بالمنطقة الوسطي", "total_due": 20152734.68, "raised": 0.00, "payment_order_issued": 6343344.10, "target_raised": 13809390.58},
+        {"id": 5, "project_name": "الاشراف علي إدارة المرافق بالمنطقة الجنوبية", "total_due": 4222488.43, "raised": 0.00, "payment_order_issued": 3222488.43, "target_raised": 1000000.00},
+        {"id": 6, "project_name": "الخدمات الاستشارية للاستفادة من المياه الجوفية و السطحية و مشاريع درء اخطار السيول", "total_due": 4972625.00, "raised": 1752600.00, "payment_order_issued": 2187300.00, "target_raised": 1032725.00},
+        {"id": 7, "project_name": "الاتفاقية الاطارية لتصميم مشاريع المؤسسة العامة للري امر عمل (02)", "total_due": 5398330.00, "raised": 4508000.00, "payment_order_issued": 0.00, "target_raised": 890330.00},
+        {"id": 8, "project_name": "ترميز مباني التراث المعماري وسط الرياض", "total_due": 3910460.00, "raised": 0.00, "payment_order_issued": 0.00, "target_raised": 3910460.00},
+        {"id": 9, "project_name": "دراسة و تصميم مشروع انشاء قاعة الطعام بالمقر الرئيسي", "total_due": 439875.00, "raised": 439875.00, "payment_order_issued": 0.00, "target_raised": 0.00},
+        {"id": 10, "project_name": "مبالغ تم دفعها للهندسية ولم يتم تحصيلها", "total_due": 2864500.00, "raised": 0.00, "payment_order_issued": 0.00, "target_raised": 2864500.00},
+        {"id": 11, "project_name": "الاشراف علي المشاريع الصغيرة بجميع مناطق المملكة (المرحلة الثانية)", "total_due": 2996034.00, "raised": 0.00, "payment_order_issued": 0.00, "target_raised": 2996034.00},
+        {"id": 12, "project_name": "الاتفاقية الاطارية لخدمات الاشراف علي مشاريع إدارة المرافق بالمنطقة الوسطي (2)", "total_due": 3800000.00, "raised": 0.00, "payment_order_issued": 0.00, "target_raised": 3800000.00}
     ]
     df = pd.DataFrame(raw_data)
     
-    # تحديد حالة المستخلص للمشروع
     def classify_status(row):
         if row['payment_order_issued'] >= row['total_due'] and row['total_due'] > 0:
             return 'صرف كامل'
@@ -187,13 +129,100 @@ def load_data(uploaded_file):
 
 
 # ============================================
-# 3. التطبيق الرئيسي
+# 4. مولد التقرير التنفيذي PDF للطباعة والحفظ
+# ============================================
+def generate_pdf_html(df, total_due, total_paid, total_raised, total_target):
+    rows_html = ""
+    for idx, row in df.iterrows():
+        rows_html += f"""
+        <tr>
+            <td style="padding: 8px; border: 1px solid #cbd5e1; text-align: center;">{row['id']}</td>
+            <td style="padding: 8px; border: 1px solid #cbd5e1; text-align: right; font-weight: bold;">{row['project_name']}</td>
+            <td style="padding: 8px; border: 1px solid #cbd5e1; text-align: left;">{row['total_due']:,.2f} ﷼</td>
+            <td style="padding: 8px; border: 1px solid #cbd5e1; text-align: left;">{row['raised']:,.2f} ﷼</td>
+            <td style="padding: 8px; border: 1px solid #cbd5e1; text-align: left; color: #059669; font-weight: bold;">{row['payment_order_issued']:,.2f} ﷼</td>
+            <td style="padding: 8px; border: 1px solid #cbd5e1; text-align: left; color: #d97706;">{row['target_raised']:,.2f} ﷼</td>
+        </tr>
+        """
+
+    return f"""
+    <!DOCTYPE html>
+    <html dir="rtl" lang="ar">
+    <head>
+        <meta charset="UTF-8">
+        <title>تقرير المستخلصات التنفيذي - شركة العمران المتقدم</title>
+        <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+        <style>
+            body {{ font-family: 'Cairo', sans-serif; padding: 30px; background-color: #fff; color: #0f172a; }}
+            .header {{ display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #009640; padding-bottom: 15px; margin-bottom: 25px; }}
+            .title {{ font-size: 22px; font-weight: 800; color: #0f172a; margin: 0; }}
+            .kpi-grid {{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 25px; }}
+            .kpi-card {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; text-align: center; }}
+            .kpi-title {{ font-size: 12px; color: #64748b; margin-bottom: 4px; }}
+            .kpi-value {{ font-size: 16px; font-weight: 700; color: #0f172a; }}
+            table {{ width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 12px; }}
+            th {{ background-color: #0f172a; color: white; padding: 10px; border: 1px solid #0f172a; text-align: center; }}
+        </style>
+    </head>
+    <body onload="window.print()">
+        <div class="header">
+            <div>
+                <h1 class="title">تقرير المستخلصات المالي التنفيذي</h1>
+                <p style="margin: 3px 0 0 0; color: #64748b; font-size: 13px;">تاريخ الإصدار: {datetime.now().strftime('%Y-%m-%d %H:%M')}</p>
+            </div>
+            <div style="text-align: left;">
+                <h2 style="margin: 0; color: #009640; font-size: 24px; font-weight: 900;">شركة العمران المتقدم</h2>
+                <span style="font-size: 11px; color: #64748b;">OMRAN ADVANCED COMPANY</span>
+            </div>
+        </div>
+
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-title">إجمالي المستحق</div>
+                <div class="kpi-value">{total_due:,.2f} ﷼</div>
+            </div>
+            <div class="kpi-card" style="border-top: 3px solid #10b981;">
+                <div class="kpi-title">صدر له أمر دفع</div>
+                <div class="kpi-value" style="color: #059669;">{total_paid:,.2f} ﷼</div>
+            </div>
+            <div class="kpi-card" style="border-top: 3px solid #3b82f6;">
+                <div class="kpi-title">مستخلصات مرفوعة</div>
+                <div class="kpi-value" style="color: #2563eb;">{total_raised:,.2f} ﷼</div>
+            </div>
+            <div class="kpi-card" style="border-top: 3px solid #f59e0b;">
+                <div class="kpi-title">مستهدف رفعها</div>
+                <div class="kpi-value" style="color: #d97706;">{total_target:,.2f} ﷼</div>
+            </div>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>م</th>
+                    <th>اسم المشروع</th>
+                    <th>المستحق حتى نهاية أغسطس</th>
+                    <th>المستخلصات المرفوعة</th>
+                    <th>صدر لها أمر دفع</th>
+                    <th>مستهدف رفعها</th>
+                </tr>
+            </thead>
+            <tbody>
+                {rows_html}
+            </tbody>
+        </table>
+    </body>
+    </html>
+    """
+
+
+# ============================================
+# 5. التطبيق الرئيسي
 # ============================================
 def main():
-    st.sidebar.title("⚙️ خيارات الفلترة والتصدير")
+    st.sidebar.title("⚙️ الفلاتر واستخراج التقرير")
     st.sidebar.markdown("---")
     
-    uploaded_file = st.sidebar.file_uploader("📂 رفع ملف Excel مُحدث (اختياري)", type=["xlsx", "xls"])
+    uploaded_file = st.sidebar.file_uploader("📂 رفع ملف Excel (اختياري)", type=["xlsx", "xls"])
     df = load_data(uploaded_file)
 
     # فلاتر البحث
@@ -222,18 +251,32 @@ def main():
     raised_pct = (total_raised / total_due * 100) if total_due > 0 else 0
     target_pct = (total_target / total_due * 100) if total_due > 0 else 0
 
-    # الهيدر الرئيسي
-    col_head1, col_head2 = st.columns([3, 1])
-    with col_head1:
-        st.title("📊 لوحة مستخلصات أداء المشاريع - أغسطس")
-        st.caption("متابعة المستخلصات المستحقة، المرفوعة، وأوامر الدفع الصادرة")
-    with col_head2:
-        st.markdown(f"**🗓️ الفترة:** حتى نهاية أغسطس\n\n**🔄 التحديث:** `{datetime.now().strftime('%Y-%m-%d')}`")
+    # الهيدر والشعار
+    col_logo, col_head, col_btn = st.columns([1.2, 2.2, 1.2])
+    with col_logo:
+        render_logo()
+    with col_head:
+        st.title("📊 لوحة مستخلصات أداء المشاريع")
+        st.caption("شركة العمران المتقدم • موقف المستخلصات حتى نهاية شهر أغسطس")
+
+    with col_btn:
+        st.markdown("<br>", unsafe_allow_html=True)
+        export_pdf = st.button("📄 استخراج التقرير PDF", type="primary", use_container_width=True)
+
+    # زر استخراج PDF بالشريط الجانبي أيضاً
+    st.sidebar.markdown("---")
+    sidebar_pdf = st.sidebar.button("📄 استخراج التقرير PDF", use_container_width=True)
+
+    # تشغيل نافذة الطباعة والحفظ كـ PDF
+    if export_pdf or sidebar_pdf:
+        st.info("🖨️ جاري فتح نافذة طباعة وحفظ التقرير بصيغة PDF...")
+        pdf_code = generate_pdf_html(filtered_df, total_due, total_paid, total_raised, total_target)
+        st.components.v1.html(pdf_code, height=650, scrolling=True)
 
     st.markdown("---")
 
     # ============================================
-    # 4. بطاقات KPI
+    # 6. بطاقات KPI
     # ============================================
     kpi1, kpi2, kpi3, kpi4 = st.columns(4)
     
@@ -245,14 +288,13 @@ def main():
     st.markdown("---")
 
     # ============================================
-    # 5. الرسوم البيانية الرئيسية
+    # 7. الرسوم البيانية الرئيسية
     # ============================================
     col_c1, col_c2 = st.columns([2, 1])
 
     with col_c1:
         st.subheader("📊 تفاصيل المستخلصات لكل مشروع")
         
-        # تجهيز البيانات للرسم التجميعي
         melted_df = filtered_df.melt(
             id_vars=['project_name'],
             value_vars=['payment_order_issued', 'raised', 'target_raised'],
@@ -318,7 +360,7 @@ def main():
         st.plotly_chart(fig_pie, use_container_width=True)
 
     # ============================================
-    # 6. الرسوم البيانية الفرعية
+    # 8. الرسوم البيانية الفرعية
     # ============================================
     col_c3, col_c4 = st.columns(2)
 
@@ -355,7 +397,7 @@ def main():
         st.plotly_chart(fig_status, use_container_width=True)
 
     # ============================================
-    # 7. الجدول التفصيلي الكامل
+    # 9. الجدول التفصيلي الكامل
     # ============================================
     st.markdown("---")
     st.subheader("📋 جدول المستخلصات التفصيلي للمشاريع")
@@ -375,17 +417,6 @@ def main():
             "target_raised": st.column_config.NumberColumn("مستهدف رفعها", format="%.2f ﷼"),
             "status": st.column_config.Column("حالة المشروع")
         }
-    )
-
-    # ============================================
-    # 8. تصدير البيانات
-    # ============================================
-    st.sidebar.markdown("---")
-    st.sidebar.download_button(
-        label="📥 تحميل تقرير المستخلصات (CSV)",
-        data=filtered_df.to_csv(index=False).encode('utf-8-sig'),
-        file_name=f"August_Projects_Financial_Report_{datetime.now().strftime('%Y%m%d')}.csv",
-        mime="text/csv"
     )
 
 if __name__ == "__main__":
