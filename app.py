@@ -227,7 +227,7 @@ def main():
     with col_head1:
         st.title("📊 لوحة مستخلصات أداء المشاريع - أغسطس")
         st.caption("متابعة المستخلصات المستحقة، المرفوعة، وأوامر الدفع الصادرة")
-    with col_date := col_head2:
+    with col_head2:
         st.markdown(f"**🗓️ الفترة:** حتى نهاية أغسطس\n\n**🔄 التحديث:** `{datetime.now().strftime('%Y-%m-%d')}`")
 
     st.markdown("---")
