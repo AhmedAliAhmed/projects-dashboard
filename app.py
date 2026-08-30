@@ -41,7 +41,6 @@ st.markdown("""
         color: #38bdf8 !important;
     }
 
-    /* تعديل الهوامش للشريط الجانبي */
     .css-1d3550e, [data-testid="stSidebar"] {
         direction: rtl;
         text-align: right;
@@ -265,7 +264,7 @@ def main():
             height=400,
             xaxis_tickangle=-30,
             legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-            font=family="Cairo"
+            font=dict(family="Cairo")
         )
         
         st.plotly_chart(fig_bar, use_container_width=True)
@@ -283,7 +282,7 @@ def main():
         
         fig_pie.update_layout(
             height=400,
-            font=family="Cairo",
+            font=dict(family="Cairo"),
             showlegend=True,
             legend=dict(orientation="h", y=-0.2)
         )
@@ -302,11 +301,11 @@ def main():
         fig_line = px.line(
             x=months,
             y=monthly_paid,
-            markers=true,
+            markers=True,
             labels={'x': 'الشهر', 'y': 'المبلغ المدفوع (ريال)'}
         )
         fig_line.update_traces(line_color='#10b981', line_width=3)
-        fig_line.update_layout(height=320, font=family="Cairo")
+        fig_line.update_layout(height=320, font=dict(family="Cairo"))
         st.plotly_chart(fig_line, use_container_width=True)
     
     with col_chart4:
@@ -324,7 +323,7 @@ def main():
             color_discrete_map={'مكتمل': '#10b981', 'جاري': '#3b82f6', 'متوقف': '#ef4444'}
         )
         
-        fig_status.update_layout(height=320, font=family="Cairo")
+        fig_status.update_layout(height=320, font=dict(family="Cairo"))
         st.plotly_chart(fig_status, use_container_width=True)
     
     # الجدول التفصيلي
