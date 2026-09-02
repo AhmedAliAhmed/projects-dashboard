@@ -1,369 +1,359 @@
-import streamlit as st
+from datetime import datetime
+import io
+import warnings
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from datetime import datetime
-import numpy as np
+import streamlit as st
+
+warnings.filterwarnings("ignore")
 
 # ============================================
-# 1. إعداد الصفحة
+# إعدادات الصفحة
 # ============================================
 st.set_page_config(
-    page_title="لوحة مؤشرات المشاريع",
+    page_title="📊 داشبورد إدارة المشاريع الشامل",
     page_icon="📊",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="expanded",
 )
 
-# ============================================
-# 2. تحميل البيانات
-# ============================================
-@st.cache_data
-def load_data():
-    file_path = "data/Projects Financial Dashboard Template.xlsx"
-    
-    try:
-        # قراءة البيانات من الشيت المحدد
-        df = pd.read_excel(
-            file_path,
-            sheet_name="ملخص مستخلصات المشاريع (2)",
-            skiprows=3,  # تخطي العناوين العلوية
-            usecols="B:F",  # الأعمدة المطلوبة
-            names=[
-                'project_name',
-                'total_due',
-                'raised',
-                'payment_order_issued',
-                'target_raised'
-            ],
-            nrows=12  # عدد المشاريع
-        )
-        
-        # تنظيف البيانات
-        df = df.dropna(subset=['project_name'])
-        df = df.replace(0, np.nan)  # تحويل الأصفار إلى NaN للرسوم البيانية
-        
-        # إضافة عمود الحالة المقترح
-        df['status'] = df.apply(
-            lambda row: 'مكتمل' if row['total_due'] == row['payment_order_issued'] 
-            else 'جاري' if row['raised'] > 0 
-            else 'متوقف', 
-            axis=1
-        )
-        
-        # إضافة عمود المنطقة (مثال - يمكن تعديله حسب البيانات الفعلية)
-        regions = ['الوسطى', 'الجنوبية', 'الشرقية', 'الغربية', 'الشمالية']
-        df['region'] = np.random.choice(regions, len(df))
-        
-        return df
-    
-    except Exception as e:
-        st.error(f"خطأ في تحميل الملف: {e}")
-        return pd.DataFrame()
 
 # ============================================
-# 3. حساب المؤشرات
+# دالة ذكية جداً لقراءة أي ملف إكسل بأي صيغة
 # ============================================
-def calculate_kpis(df):
-    total_due = df['total_due'].sum()
-    total_raised = df['raised'].sum()
-    total_paid = df['payment_order_issued'].sum()
-    total_target = df['target_raised'].sum()
-    
-    # نسبة المدفوع من المستحق
-    payment_ratio = (total_paid / total_due * 100) if total_due > 0 else 0
-    
-    # نسبة الإنجاز المالي
-    achievement_ratio = (total_raised / total_due * 100) if total_due > 0 else 0
-    
-    # المتبقي للرفع
-    remaining_to_raise = total_due - total_raised
-    
-    return {
-        'total_due': total_due,
-        'total_raised': total_raised,
-        'total_paid': total_paid,
-        'total_target': total_target,
-        'payment_ratio': payment_ratio,
-        'achievement_ratio': achievement_ratio,
-        'remaining_to_raise': remaining_to_raise
-    }
+def read_flexible_excel(file_source):
+  """تحليل وقراءة أي ملف إكسل مرن والتعرف التلقائي على الأعمدة"""
+  try:
+    xls = pd.ExcelFile(file_source)
 
-# ============================================
-# 4. التطبيق الرئيسي
-# ============================================
-def main():
-    # تحميل البيانات
-    df = load_data()
-    
-    if df.empty:
-        st.warning("⚠️ لا توجد بيانات لعرضها. يرجى التأكد من وجود ملف Excel في المسار المحدد.")
-        return
-    
-    # ============================================
-    # 4.1 الشريط الجانبي (Slicers)
-    # ============================================
-    st.sidebar.title("🔍 فلتر البيانات")
-    st.sidebar.markdown("---")
-    
-    # فلتر المشروع
-    project_filter = st.sidebar.multiselect(
-        "اختر المشروع",
-        options=df['project_name'].unique(),
-        default=df['project_name'].unique()
+    # البحث عن أول شيت يحتوي على بيانات
+    df = None
+    for sheet in xls.sheet_names:
+      try:
+        temp_df = pd.read_excel(xls, sheet_name=sheet)
+        # تجربة القراءة مع التجاوز عن الصفوف الفارغة في الأعلى
+        if temp_df.dropna(how="all").shape[0] > 0:
+          df = temp_df
+          break
+      except:
+        continue
+
+    if df is None or df.empty:
+      return None
+
+    # إذا كانت الهيدرات في صف متأخر (كما في بعض تقارير الإكسل)
+    if "المشروع" not in df.columns and "Project" not in [
+        str(c) for c in df.columns
+    ]:
+      for header_row in range(1, min(5, len(df))):
+        try:
+          temp_df = pd.read_excel(xls, header=header_row)
+          if any(
+              k in str(c).lower()
+              for c in temp_df.columns
+              for k in ["مشروع", "project", "حالة", "status"]
+          ):
+            df = temp_df
+            break
+        except:
+          pass
+
+    # تنظيف وتوحيد مسافات الأعمدة
+    df.columns = [str(c).strip() for c in df.columns]
+
+    # قاموس الذكاء لربط وتوحيد أسماء الأعمدة المختلفة (عربي / إنجليزي)
+    column_mapping = {}
+    for col in df.columns:
+      c_lower = col.lower()
+      if any(k in c_lower for k in ["مشروع", "project", "اسم"]):
+        column_mapping[col] = "المشروع"
+      elif any(k in c_lower for k in ["حالة", "status", "state"]):
+        column_mapping[col] = "الحالة"
+      elif any(k in c_lower for k in ["مدير", "manager", "lead"]):
+        column_mapping[col] = "مدير_المشروع"
+      elif any(k in c_lower for k in ["جهة", "عميل", "client", "sector"]):
+        column_mapping[col] = "الجهة"
+      elif any(
+          k in c_lower
+          for k in [
+              "إجمال",
+              "عقد",
+              "contract",
+              "total",
+              "value",
+              "قيمة",
+              "ميزانية",
+          ]
+      ):
+        column_mapping[col] = "القيمة_الاجمالية"
+      elif any(
+          k in c_lower
+          for k in ["صرف", "مصروف", "spent", "cost", "actual", "مدفوع"]
+      ):
+        column_mapping[col] = "ما_تم_صرفه"
+
+    df = df.rename(columns=column_mapping)
+
+    # إضافة أعمدة حماية في حال عدم وجودها لمنع KeyError
+    if "المشروع" not in df.columns:
+      df["المشروع"] = [f"مشروع {i+1}" for i in range(len(df))]
+    if "الحالة" not in df.columns:
+      df["الحالة"] = "جاري"
+    if "مدير_المشروع" not in df.columns:
+      df["مدير_المشروع"] = "غير محدد"
+    if "الجهة" not in df.columns:
+      df["الجهة"] = "غير محدد"
+    if "القيمة_الاجمالية" not in df.columns:
+      df["القيمة_الاجمالية"] = 0
+    if "ما_تم_صرفه" not in df.columns:
+      df["ما_تم_صرفه"] = 0
+
+    # تنظيف الحقول الأرقام
+    df["القيمة_الاجمالية"] = pd.to_numeric(
+        df["القيمة_الاجمالية"], errors="coerce"
+    ).fillna(0)
+    df["ما_تم_صرفه"] = pd.to_numeric(
+        df["ما_تم_صرفه"], errors="coerce"
+    ).fillna(0)
+    df["المتبقي"] = df["القيمة_الاجمالية"] - df["ما_تم_صرفه"]
+
+    return df
+
+  except Exception as e:
+    st.error(f"⚠️ خطأ في قراءة ملف الإكسل: {e}")
+    return None
+
+
+# تهيئة البيانات في الـ Session State
+if "data_df" not in st.session_state:
+  try:
+    st.session_state.data_df = read_flexible_excel("جميع المشاريع.xlsx")
+  except:
+    st.session_state.data_df = None
+
+  if st.session_state.data_df is None:
+    st.session_state.data_df = pd.DataFrame({
+        "المشروع": [
+            "مشروع تطوير المرافق",
+            "مشروع المختبر البيطري",
+            "مشروع الاستشارات الهندسية",
+        ],
+        "مدير_المشروع": ["أحمد علي", "سارة محمود", "محمد خالد"],
+        "الحالة": ["جاري", "جاري", "منتهي"],
+        "الجهة": [
+            "وزارة البيئة والزراعة",
+            "وزارة البيئة والزراعة",
+            "بنك التنمية",
+        ],
+        "القيمة_الاجمالية": [24403000, 15503196, 5796000],
+        "ما_تم_صرفه": [2897500, 1103692, 241500],
+        "المتبقي": [21505500, 14399504, 5554500],
+    })
+
+# ===== الشريط الجانبي =====
+with st.sidebar:
+  st.markdown("### 📁 رفع وتحديث البيانات من أي ملف Excel")
+  uploaded_file = st.file_uploader(
+      "رفع ملف Excel جديد (أي صيغة عربي/إنجليزي):",
+      type=["xlsx", "xls"],
+      key="uploader_key",
+  )
+
+  if uploaded_file is not None:
+    parsed_df = read_flexible_excel(uploaded_file)
+    if parsed_df is not None and not parsed_df.empty:
+      st.session_state.data_df = parsed_df
+      st.success("✅ تم تحديث الداشبورد من الملف المرفوع بنجاح!")
+
+  st.divider()
+
+  # زر تحميل ملف إكسل معدل
+  buffer = io.BytesIO()
+  with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
+    st.session_state.data_df.to_excel(
+        writer, sheet_name="بيانات المشاريع", index=False
     )
-    
-    # فلتر المنطقة
-    region_filter = st.sidebar.multiselect(
-        "اختر المنطقة",
-        options=df['region'].unique(),
-        default=df['region'].unique()
+
+  st.download_button(
+      label="📥 تحميل البيانات الحالية (Excel)",
+      data=buffer.getvalue(),
+      file_name="جميع_المشاريع_المحدثة.xlsx",
+      mime=(
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      ),
+  )
+  st.caption("© 2026 ADV CON CENTER")
+
+# ===== العنوان الرئيسي =====
+st.markdown(
+    """
+    <div style='background: linear-gradient(135deg, #1a237e 0%, #0d47a1 100%); padding: 20px; border-radius: 10px; margin-bottom: 20px;'>
+        <h1 style='text-align: center; color: white; margin: 0;'>
+            📊 داشبورد إدارة المشاريع (مرن ومتوافق)
+        </h1>
+        <p style='text-align: center; color: #e3f2fd; margin: 5px 0 0 0; font-size: 16px;'>
+            ADV CON CENTER - يمكنك رفع أي ملف Excel جديد من اليسار وسيتعرف عليه الداشبورد تلقائياً
+        </p>
+    </div>
+""",
+    unsafe_allow_html=True,
+)
+
+# ===== مؤشرات الأداء =====
+df_curr = st.session_state.data_df
+
+total_contracts = (
+    df_curr["القيمة_الاجمالية"].sum()
+    if "القيمة_الاجمالية" in df_curr.columns
+    else 0
+)
+total_paid = (
+    df_curr["ما_تم_صرفه"].sum() if "ما_تم_صرفه" in df_curr.columns else 0
+)
+total_remaining = total_contracts - total_paid
+
+active_projects = (
+    len(df_curr[df_curr["الحالة"].astype(str).str.contains("جاري|active", case=False, na=False)])
+    if "الحالة" in df_curr.columns
+    else 0
+)
+completed_projects = (
+    len(df_curr[df_curr["الحالة"].astype(str).str.contains("منتهي|completed", case=False, na=False)])
+    if "الحالة" in df_curr.columns
+    else 0
+)
+
+st.markdown("### 🎯 مؤشرات الأداء الرئيسية")
+kpi_cols = st.columns(5)
+kpi_cols[0].metric("💰 إجمالي العقود", f"{total_contracts:,.0f} ريال")
+kpi_cols[1].metric("✅ المصرُوف", f"{total_paid:,.0f} ريال")
+kpi_cols[2].metric("📌 المتبقي", f"{total_remaining:,.0f} ريال")
+kpi_cols[3].metric("🔄 مشاريع نشطة", f"{active_projects} مشروع")
+kpi_cols[4].metric("✓ مشاريع منتهية", f"{completed_projects} مشروع")
+
+st.divider()
+
+# ===== المخططات البيانية =====
+st.markdown("### 📊 التحليل المالي للمشاريع")
+col1, col2 = st.columns([2, 1])
+
+with col1:
+  if not df_curr.empty and "المشروع" in df_curr.columns:
+    plot_df = df_curr.head(20).copy()
+    fig1 = go.Figure()
+    fig1.add_trace(
+        go.Bar(
+            x=plot_df["المشروع"],
+            y=plot_df["القيمة_الاجمالية"],
+            name="القيمة الإجمالية",
+            marker_color="#1a237e",
+            text=plot_df["القيمة_الاجمالية"].apply(lambda x: f"{x:,.0f}"),
+            textposition="outside",
+        )
     )
-    
-    # فلتر الحالة
-    status_filter = st.sidebar.multiselect(
-        "اختر الحالة",
-        options=df['status'].unique(),
-        default=df['status'].unique()
+    fig1.add_trace(
+        go.Bar(
+            x=plot_df["المشروع"],
+            y=plot_df["ما_تم_صرفه"],
+            name="المصرُوف",
+            marker_color="#2e7d32",
+            text=plot_df["ما_تم_صرفه"].apply(lambda x: f"{x:,.0f}"),
+            textposition="outside",
+        )
     )
-    
-    # تطبيق الفلاتر
-    filtered_df = df[
-        (df['project_name'].isin(project_filter)) &
-        (df['region'].isin(region_filter)) &
-        (df['status'].isin(status_filter))
+    fig1.add_trace(
+        go.Bar(
+            x=plot_df["المشروع"],
+            y=plot_df["المتبقي"],
+            name="المتبقي",
+            marker_color="#e65100",
+            text=plot_df["المتبقي"].apply(lambda x: f"{x:,.0f}"),
+            textposition="outside",
+        )
+    )
+    fig1.update_layout(
+        barmode="group",
+        xaxis_tickangle=-30,
+        height=420,
+        showlegend=True,
+        plot_bgcolor="rgba(0,0,0,0)",
+    )
+    st.plotly_chart(fig1, use_container_width=True)
+
+with col2:
+  if not df_curr.empty and "الحالة" in df_curr.columns:
+    status_counts = df_curr["الحالة"].value_counts()
+    fig2 = px.pie(
+        values=status_counts.values,
+        names=status_counts.index,
+        hole=0.4,
+    )
+    fig2.update_layout(height=380, showlegend=True)
+    fig2.update_traces(textposition="inside", textinfo="percent+label")
+    st.plotly_chart(fig2, use_container_width=True)
+
+st.divider()
+
+# ===== الجدول التفصيلي المحرر =====
+st.markdown("### 📋 جدول المشاريع التفصيلي المباشر")
+
+cols_to_show = [
+    c
+    for c in [
+        "المشروع",
+        "مدير_المشروع",
+        "الحالة",
+        "الجهة",
+        "القيمة_الاجمالية",
+        "ما_تم_صرفه",
+        "المتبقي",
     ]
-    
-    if filtered_df.empty:
-        st.warning("⚠️ لا توجد بيانات تطابق الفلاتر المحددة.")
-        return
-    
-    # ============================================
-    # 4.2 حساب المؤشرات
-    # ============================================
-    kpis = calculate_kpis(filtered_df)
-    
-    # ============================================
-    # 4.3 العنوان وتاريخ التحديث
-    # ============================================
-    col_title, col_date = st.columns([3, 1])
-    with col_title:
-        st.title("📊 لوحة مؤشرات أداء المشاريع")
-    with col_date:
-        st.markdown(f"**🔄 آخر تحديث:** {datetime.now().strftime('%Y-%m-%d %H:%M')}")
-    
-    st.markdown("---")
-    
-    # ============================================
-    # 4.4 بطاقات KPIs
-    # ============================================
-    col1, col2, col3, col4, col5 = st.columns(5)
-    
-    with col1:
-        st.metric(
-            label="💰 إجمالي المستحق",
-            value=f"{kpis['total_due']:,.2f}",
-            delta=None
-        )
-    
-    with col2:
-        st.metric(
-            label="📤 إجمالي المرفوع",
-            value=f"{kpis['total_raised']:,.2f}",
-            delta=f"{kpis['achievement_ratio']:.1f}%"
-        )
-    
-    with col3:
-        st.metric(
-            label="💳 إجمالي المدفوع",
-            value=f"{kpis['total_paid']:,.2f}",
-            delta=f"{kpis['payment_ratio']:.1f}%"
-        )
-    
-    with col4:
-        st.metric(
-            label="🎯 المستهدف للرفع",
-            value=f"{kpis['total_target']:,.2f}",
-            delta=None
-        )
-    
-    with col5:
-        st.metric(
-            label="📉 المتبقي للرفع",
-            value=f"{kpis['remaining_to_raise']:,.2f}",
-            delta=None
-        )
-    
-    st.markdown("---")
-    
-    # ============================================
-    # 4.5 الرسوم البيانية
-    # ============================================
-    col_chart1, col_chart2 = st.columns([2, 1])
-    
-    # 4.5.1 مخطط عمودي للمقارنة
-    with col_chart1:
-        st.subheader("📊 مقارنة المستخلصات حسب المشروع")
-        
-        # تحضير البيانات للرسم
-        chart_data = filtered_df.melt(
-            id_vars=['project_name'],
-            value_vars=['total_due', 'raised', 'payment_order_issued', 'target_raised'],
-            var_name='type',
-            value_name='amount'
-        )
-        
-        # استبدال الأسماء العربية
-        type_names = {
-            'total_due': 'المستحق',
-            'raised': 'المرفوع',
-            'payment_order_issued': 'المدفوع',
-            'target_raised': 'المستهدف'
-        }
-        chart_data['type'] = chart_data['type'].map(type_names)
-        
-        # رسم المخطط العمودي
-        fig_bar = px.bar(
-            chart_data,
-            x='project_name',
-            y='amount',
-            color='type',
-            barmode='group',
-            title="مقارنة المستخلصات حسب المشروع",
-            labels={'project_name': 'المشروع', 'amount': 'المبلغ', 'type': 'نوع المستخلص'},
-            color_discrete_sequence=px.colors.qualitative.Set2
-        )
-        
-        fig_bar.update_layout(
-            height=400,
-            xaxis_tickangle=-45,
-            legend_title_text='',
-            showlegend=True
-        )
-        
-        st.plotly_chart(fig_bar, use_container_width=True)
-    
-    # 4.5.2 مخطط دائري
-    with col_chart2:
-        st.subheader("🎯 توزيع المستحق حسب المشروع")
-        
-        fig_pie = px.pie(
-            filtered_df,
-            values='total_due',
-            names='project_name',
-            title="نسبة كل مشروع من إجمالي المستحق",
-            hole=0.3,
-            color_discrete_sequence=px.colors.qualitative.Pastel
-        )
-        
-        fig_pie.update_layout(
-            height=400,
-            showlegend=True,
-            legend_title_text=''
-        )
-        
-        st.plotly_chart(fig_pie, use_container_width=True)
-    
-    # ============================================
-    # 4.6 مخططات إضافية
-    # ============================================
-    col_chart3, col_chart4 = st.columns(2)
-    
-    # 4.6.1 مخطط خطي - اتجاه المدفوعات (محاكاة)
-    with col_chart3:
-        st.subheader("📈 اتجاه المدفوعات (محاكاة)")
-        
-        # محاكاة بيانات شهرية
-        months = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس']
-        monthly_paid = np.random.uniform(100000, 500000, 8)
-        
-        fig_line = px.line(
-            x=months,
-            y=monthly_paid,
-            title="اتجاه المدفوعات الشهرية (محاكاة)",
-            labels={'x': 'الشهر', 'y': 'المبلغ المدفوع'}
-        )
-        
-        fig_line.update_layout(height=300)
-        st.plotly_chart(fig_line, use_container_width=True)
-    
-    # 4.6.2 مخطط دائري للحالات
-    with col_chart4:
-        st.subheader("📊 توزيع المشاريع حسب الحالة")
-        
-        status_counts = filtered_df['status'].value_counts()
-        
-        fig_status = px.pie(
-            values=status_counts.values,
-            names=status_counts.index,
-            title="حالة المشاريع",
-            hole=0.3,
-            color_discrete_sequence=px.colors.qualitative.Set3
-        )
-        
-        fig_status.update_layout(height=300)
-        st.plotly_chart(fig_status, use_container_width=True)
-    
-    # ============================================
-    # 4.7 الجدول التفصيلي
-    # ============================================
-    st.markdown("---")
-    st.subheader("📋 الجدول التفصيلي للمشاريع")
-    
-    # تنسيق الأرقام
-    display_df = filtered_df.copy()
-    display_df['total_due'] = display_df['total_due'].apply(lambda x: f"{x:,.2f}")
-    display_df['raised'] = display_df['raised'].apply(lambda x: f"{x:,.2f}")
-    display_df['payment_order_issued'] = display_df['payment_order_issued'].apply(lambda x: f"{x:,.2f}")
-    display_df['target_raised'] = display_df['target_raised'].apply(lambda x: f"{x:,.2f}")
-    
-    # إعادة تسمية الأعمدة
-    display_df.columns = [
-        'اسم المشروع',
-        'المستحق',
-        'المرفوع',
-        'المدفوع',
-        'المستهدف',
-        'الحالة',
-        'المنطقة'
-    ]
-    
-    st.dataframe(
-        display_df,
-        use_container_width=True,
-        hide_index=True
-    )
-    
-    # ============================================
-    # 4.8 إحصائيات إضافية
-    # ============================================
-    st.markdown("---")
-    st.subheader("📊 ملخص إضافي")
-    
-    col_stat1, col_stat2, col_stat3 = st.columns(3)
-    
-    with col_stat1:
-        st.info(f"**عدد المشاريع:** {len(filtered_df)}")
-    
-    with col_stat2:
-        st.info(f"**متوسط المدفوع لكل مشروع:** {kpis['total_paid']/len(filtered_df):,.2f}")
-    
-    with col_stat3:
-        st.info(f"**أعلى مشروع مستحق:** {filtered_df['project_name'][filtered_df['total_due'].idxmax()]}")
-    
-    # ============================================
-    # 4.9 تحميل البيانات
-    # ============================================
-    st.sidebar.markdown("---")
-    st.sidebar.download_button(
-        label="📥 تحميل البيانات المُفلترة",
-        data=filtered_df.to_csv(index=False).encode('utf-8'),
-        file_name=f"filtered_data_{datetime.now().strftime('%Y%m%d')}.csv",
-        mime="text/csv"
-    )
+    if c in st.session_state.data_df.columns
+]
 
-# ============================================
-# 5. تشغيل التطبيق
-# ============================================
-if __name__ == "__main__":
-    main()
+edited_data = st.data_editor(
+    st.session_state.data_df[cols_to_show],
+    num_rows="dynamic",
+    use_container_width=True,
+    key="table_editor_widget",
+    column_config={
+        "المشروع": st.column_config.TextColumn(
+            "اسم المشروع", required=True, width="large"
+        ),
+        "مدير_المشروع": st.column_config.TextColumn(
+            "مدير المشروع", width="medium"
+        ),
+        "الحالة": st.column_config.TextColumn("الحالة", width="small"),
+        "الجهة": st.column_config.TextColumn("الجهة المالكة", width="medium"),
+        "القيمة_الاجمالية": st.column_config.NumberColumn(
+            "القيمة الإجمالية (ريال)", format="%d", width="medium"
+        ),
+        "ما_تم_صرفه": st.column_config.NumberColumn(
+            "المصرُوف (ريال)", format="%d", width="medium"
+        ),
+        "المتبقي": st.column_config.NumberColumn(
+            "المتبقي (محسوب)", format="%d", disabled=True, width="medium"
+        ),
+    },
+)
+
+# تحديث المتبقي أوتوماتيكياً
+if "القيمة_الاجمالية" in edited_data.columns and "ما_تم_صرفه" in edited_data.columns:
+  edited_data["المتبقي"] = (
+      edited_data["القيمة_الاجمالية"] - edited_data["ما_تم_صرفه"]
+  )
+st.session_state.data_df = edited_data
+
+# ===== تذييل الصفحة =====
+st.divider()
+st.markdown(
+    """
+    <div style='text-align: center; padding: 20px; background-color: #f5f5f5; border-radius: 10px;'>
+        <p style='color: #666; margin: 0; font-size: 14px;'>
+            © 2026 ADV CON CENTER - داشبورد تفاعلي ذكي
+        </p>
+    </div>
+""",
+    unsafe_allow_html=True,
+)
