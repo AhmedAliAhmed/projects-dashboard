@@ -88,17 +88,17 @@ def render_logo():
 
 
 # ============================================
-# 3. بيانات المشاريع الفعلية (أغسطس)
+# 3. البيانات المالية المحينة (نهاية أغسطس 2026م)
 # ============================================
 @st.cache_data
 def get_actual_projects_data():
     raw_data = [
-        {"id": 1, "project_name": "تقديم الخدمات الاستشارية لدراسة تطوير خطط تشغيل و صيانة المرافق الهامة", "total_due": 3237150.00, "raised": 0.00, "payment_order_issued": 2608200.00, "target_raised": 628950.00},
-        {"id": 2, "project_name": "الاشراف علي تصميم و انشاء المختبر البيطري المركزي", "total_due": 789063.30, "raised": 0.00, "payment_order_issued": 394531.65, "target_raised": 394531.65},
+        {"id": 1, "project_name": "تقديم الخدمات الاستشارية لدراسة تطوير خطط تشغيل و صيانة المرافق الهامة", "total_due": 628950.00, "raised": 0.00, "payment_order_issued": 0.00, "target_raised": 628950.00},
+        {"id": 2, "project_name": "الاشراف علي تصميم و انشاء المختبر البيطري المركزي", "total_due": 789063.30, "raised": 438368.50, "payment_order_issued": 394531.65, "target_raised": 0.00},
         {"id": 3, "project_name": "تقديم الخدمات الاستشارية للاشراف علي المشاريع الهندسية ببنك التنمية", "total_due": 241500.00, "raised": 241500.00, "payment_order_issued": 0.00, "target_raised": 0.00},
         {"id": 4, "project_name": "الاتفاقية الاطارية لخدمات الاشراف علي مشاريع إدارة المرافق بالمنطقة الوسطي", "total_due": 20152734.68, "raised": 0.00, "payment_order_issued": 6343344.10, "target_raised": 13809390.58},
         {"id": 5, "project_name": "الاشراف علي إدارة المرافق بالمنطقة الجنوبية", "total_due": 4222488.43, "raised": 0.00, "payment_order_issued": 3222488.43, "target_raised": 1000000.00},
-        {"id": 6, "project_name": "الخدمات الاستشارية للاستفادة من المياه الجوفية و السطحية و مشاريع درء اخطار السيول", "total_due": 4972625.00, "raised": 1752600.00, "payment_order_issued": 2187300.00, "target_raised": 1032725.00},
+        {"id": 6, "project_name": "الخدمات الاستشارية للاستفادة من المياه الجوفية و السطحية و مشاريع درء اخطار السيول", "total_due": 4260775.00, "raised": 1752600.00, "payment_order_issued": 1475450.00, "target_raised": 1032725.00},
         {"id": 7, "project_name": "الاتفاقية الاطارية لتصميم مشاريع المؤسسة العامة للري امر عمل (02)", "total_due": 5398330.00, "raised": 4508000.00, "payment_order_issued": 0.00, "target_raised": 890330.00},
         {"id": 8, "project_name": "ترميز مباني التراث المعماري وسط الرياض", "total_due": 3910460.00, "raised": 0.00, "payment_order_issued": 0.00, "target_raised": 3910460.00},
         {"id": 9, "project_name": "دراسة و تصميم مشروع انشاء قاعة الطعام بالمقر الرئيسي", "total_due": 439875.00, "raised": 439875.00, "payment_order_issued": 0.00, "target_raised": 0.00},
@@ -136,7 +136,7 @@ def load_data(uploaded_file):
 
 
 # ============================================
-# 4. مولد التقرير التنفيذي PDF شامل لجميع مكونات الداش بورد
+# 4. مولد التقرير التنفيذي PDF المحدث للطباعة والحفظ
 # ============================================
 def generate_full_pdf_html(df, total_due, total_paid, total_raised, total_target):
     paid_pct = (total_paid / total_due * 100) if total_due > 0 else 0
@@ -156,7 +156,6 @@ def generate_full_pdf_html(df, total_due, total_paid, total_raised, total_target
         </tr>
         """
 
-    # رسم شريطي توضيحي للمشاريع في الـ PDF
     project_bars_html = ""
     for idx, row in df.iterrows():
         p_pct = (row['payment_order_issued'] / row['total_due'] * 100) if row['total_due'] > 0 else 0
@@ -167,9 +166,9 @@ def generate_full_pdf_html(df, total_due, total_paid, total_raised, total_target
         <div style="margin-bottom: 8px;">
             <div style="font-size: 11px; font-weight: bold; margin-bottom: 2px;">{row['id']}. {row['project_name']} ({row['total_due']:,.0f} ﷼)</div>
             <div style="background: #e2e8f0; height: 10px; border-radius: 5px; overflow: hidden; display: flex;">
-                <div style="width: {p_pct}%; background: #10b981;" title="مدفوع"></div>
-                <div style="width: {r_pct}%; background: #3b82f6;" title="مرفوع"></div>
-                <div style="width: {t_pct}%; background: #f59e0b;" title="مستهدف"></div>
+                <div style="width: {min(p_pct, 100)}%; background: #10b981;" title="مدفوع"></div>
+                <div style="width: {min(r_pct, 100)}%; background: #3b82f6;" title="مرفوع"></div>
+                <div style="width: {min(t_pct, 100)}%; background: #f59e0b;" title="مستهدف"></div>
             </div>
         </div>
         """
@@ -179,7 +178,7 @@ def generate_full_pdf_html(df, total_due, total_paid, total_raised, total_target
     <html dir="rtl" lang="ar">
     <head>
         <meta charset="UTF-8">
-        <title>الموقف المالي لمستخلصات المشاريع - شركة العمران المتقدم</title>
+        <title>الموقف المالي لمستخلصات المشاريع حتى نهاية أغسطس 2026م - شركة العمران المتقدم</title>
         <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
         <style>
             @media print {{
@@ -188,25 +187,21 @@ def generate_full_pdf_html(df, total_due, total_paid, total_raised, total_target
             }}
             body {{ font-family: 'Cairo', sans-serif; padding: 20px; background-color: #fff; color: #0f172a; direction: rtl; }}
             .header {{ display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #009640; padding-bottom: 12px; margin-bottom: 20px; }}
-            .title {{ font-size: 22px; font-weight: 800; color: #0f172a; margin: 0; }}
+            .title {{ font-size: 20px; font-weight: 800; color: #0f172a; margin: 0; }}
             .subtitle {{ font-size: 12px; color: #64748b; margin-top: 3px; }}
             
-            /* KPI Grid */
             .kpi-grid {{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px; }}
             .kpi-card {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; text-align: center; }}
             .kpi-title {{ font-size: 11px; color: #64748b; margin-bottom: 3px; font-weight: 600; }}
             .kpi-value {{ font-size: 15px; font-weight: 800; color: #0f172a; }}
             .kpi-sub {{ font-size: 10px; margin-top: 2px; font-weight: 700; }}
 
-            /* Section Headers */
             .section-header {{ font-size: 14px; font-weight: 700; color: #1e293b; margin: 18px 0 10px 0; border-right: 4px solid #009640; padding-right: 8px; }}
             
-            /* Donut Visual Box */
             .donut-box {{ display: flex; justify-content: space-around; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-bottom: 20px; text-align: center; }}
             .donut-item {{ flex: 1; }}
             .badge {{ display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-left: 4px; }}
 
-            /* Table */
             table {{ width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 10px; }}
             th {{ background-color: #0f172a; color: white; padding: 8px 4px; border: 1px solid #0f172a; text-align: center; }}
             td {{ padding: 6px 4px; border: 1px solid #cbd5e1; }}
@@ -217,8 +212,8 @@ def generate_full_pdf_html(df, total_due, total_paid, total_raised, total_target
     <body onload="window.print()">
         <div class="header">
             <div>
-                <h1 class="title">الموقف المالي لمستخلصات المشاريع</h1>
-                <p class="subtitle">تقرير شامل ومحدث لموقف كافة المستخلصات حتى نهاية شهر أغسطس | تاريخ الإصدار: {datetime.now().strftime('%Y-%m-%d')}</p>
+                <h1 class="title">الموقف المالي لمستخلصات المشاريع حتى نهاية أغسطس 2026م</h1>
+                <p class="subtitle">شركة العمران المتقدم | تاريخ الإصدار: {datetime.now().strftime('%Y-%m-%d')}</p>
             </div>
             <div style="text-align: left;">
                 <h2 style="margin: 0; color: #009640; font-size: 20px; font-weight: 900;">شركة العمران المتقدم</h2>
@@ -251,7 +246,7 @@ def generate_full_pdf_html(df, total_due, total_paid, total_raised, total_target
         </div>
 
         <!-- 2. التوزيع المالي الإجمالي -->
-        <div class="section-header">🎯 النسبة الإجمالية لحالة المبالغ الماليات</div>
+        <div class="section-header">🎯 النسبة الإجمالية لحالة المبالغ المالية</div>
         <div class="donut-box">
             <div class="donut-item">
                 <span class="badge" style="background: #10b981;"></span>
@@ -343,8 +338,8 @@ def main():
     with col_logo:
         render_logo()
     with col_head:
-        st.title("الموقف المالي لمستخلصات المشاريع")
-        st.caption("شركة العمران المتقدم • موقف المستخلصات التفصيلي حتى نهاية شهر أغسطس")
+        st.title("الموقف المالي لمستخلصات المشاريع حتى نهاية أغسطس 2026م")
+        st.caption("شركة العمران المتقدم • موقف المستخلصات التفصيلي المحدث")
 
     with col_btn:
         st.markdown("<br>", unsafe_allow_html=True)
