@@ -1,421 +1,691 @@
-from datetime import datetime
-import io
-import warnings
-import numpy as np
+import json
+import os
+import openpyxl
+from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
-import streamlit as st
-
-warnings.filterwarnings("ignore")
+from tabulate import tabulate
 
 # ============================================
-# إعدادات الصفحة
+# 1. البيانات الرسمية الخاصة بالمشاريع
 # ============================================
-st.set_page_config(
-    page_title="📊 داشبورد إدارة المشاريع الشامل",
-    page_icon="📊",
-    layout="wide",
-    initial_sidebar_state="expanded",
-)
-
-
-# ============================================
-# دالة معالجة ملف الإكسل (المرفوع أو المحلي)
-# ============================================
-def parse_excel_data(file_source):
-  """قراءة وتحليل أي ملف إكسل مرفوع أو محلي بشكل مرن"""
-  try:
-    xls = pd.ExcelFile(file_source)
-    sheet_names = xls.sheet_names
-
-    # 1. شيت مدراء المشاريع
-    project_sheet = next(
-        (s for s in sheet_names if "مدراء" in s or "المشاريع" in s),
-        sheet_names[0],
-    )
-    df_projects = pd.read_excel(xls, sheet_name=project_sheet, header=1)
-    df_projects = df_projects.dropna(how="all")
-    if len(df_projects.columns) >= 6:
-      df_projects = df_projects.iloc[:, :6]
-      df_projects.columns = [
-          "م",
-          "المشروع",
-          "مدير_المشروع",
-          "الحالة",
-          "رقم_التواصل",
-          "الإيميل",
-      ]
-    df_projects = df_projects[df_projects["م"].notna()]
-    df_projects["م"] = pd.to_numeric(
-        df_projects["م"], errors="coerce"
-    ).fillna(0)
-
-    # 2. شيت التقرير العام
-    report_sheet = next(
+data = {
+    "اسم المشروع": [
         (
-            s
-            for s in sheet_names
-            if "تقرير" in s or "عام" in s or "التقرير" in s
+            "تقديم الخدمات الاستشارية لدراسة تطوير خط تشغيل و ميانة المرافق"
+            " الهامة"
         ),
-        None,
-    )
-    if report_sheet:
-      df_report = pd.read_excel(xls, sheet_name=report_sheet, header=2)
-    elif len(sheet_names) > 1:
-      df_report = pd.read_excel(xls, sheet_name=sheet_names[1], header=2)
-    else:
-      df_report = pd.DataFrame()
+        "الاشراف على تصميم و انشاء المختبر البيطري المركزي",
+        "تقديم الخدمات الاستشارية للاشراف على المشاريع الهندسية ببنك التنمية",
+        (
+            "الاتفاقية الإطارية لخدمات الاشراف على مشاريع إدارة المرافق بالمنطقة"
+            " الوسطى"
+        ),
+        "الاشراف على إدارة المرافق بالمنطقة الجنوبية",
+        (
+            "الخدمات الاستشارية للاستفادة من المياه الجوفية و السطحية و مشاريع"
+            " درء اخطار السيول"
+        ),
+        "الاتفاقية الإطارية لتصميم مشاريع المؤسسة العامة للري امر عمل (02)",
+        "ترميز مباني التراث المعماري وسط الرياض",
+        "دراسة و تصميم مشروع انشاء قاعة الطعام بالمقر الرئيسي",
+        "مبالغ تم دفعها للهندسية ولم يتم تحصيلها",
+        "الاشراف على المشاريع الصغيرة بجميع مناطق المملكة (المرحلة الثانية)",
+        (
+            "الاتفاقية الإطارية لخدمات الاشراف على مشاريع إدارة المرافق بالمنطقة"
+            " الوسطى (2)"
+        ),
+    ],
+    "المستحق حتى نهاية": [
+        3237150.00,
+        789063.30,
+        241500.00,
+        20152734.68,
+        4222488.43,
+        4972625.00,
+        5398330.00,
+        3910460.00,
+        439875.00,
+        2864500.00,
+        2996034.00,
+        3800000.00,
+    ],
+    "المستخلصات": [
+        0.00,
+        0.00,
+        0.00,
+        0.00,
+        0.00,
+        1752600.00,
+        4508000.00,
+        0.00,
+        439875.00,
+        0.00,
+        0.00,
+        0.00,
+    ],
+    "مستهدف رفعها": [
+        2608200.00,
+        394531.65,
+        0.00,
+        6343344.10,
+        3222488.43,
+        2187300.00,
+        890330.00,
+        3910460.00,
+        0.00,
+        2864500.00,
+        2996034.00,
+        3800000.00,
+    ],
+    "مستهدف رفعها1": [
+        0.00,
+        0.00,
+        0.00,
+        0.00,
+        0.00,
+        0.00,
+        0.00,
+        0.00,
+        0.00,
+        0.00,
+        0.00,
+        0.00,
+    ],
+}
 
-    df_report = df_report.dropna(how="all")
-    if len(df_report.columns) >= 14:
-      df_report = df_report.iloc[:, :14]
-      df_report.columns = [
-          "",
-          "م",
-          "المشروع",
-          "الجهة",
-          "الموقع",
-          "المدة",
-          "تاريخ_الاستلام",
-          "تاريخ_الانتهاء",
-          "المنقضية",
-          "المتبقية",
-          "القيمة_الاجمالية",
-          "ما_تم_رفعه",
-          "ما_تم_صرفه",
-          "المتبقي",
-      ]
+# إنشاء DataFrame
+df = pd.DataFrame(data)
+df["الإجمالي العام"] = (
+    df["المستحق حتى نهاية"]
+    + df["المستخلصات"]
+    + df["مستهدف رفعها"]
+    + df["مستهدف رفعها1"]
+)
 
-    df_report = df_report[df_report["م"].notna()]
-    df_report["م"] = pd.to_numeric(df_report["م"], errors="coerce").fillna(0)
 
-    for col in ["القيمة_الاجمالية", "ما_تم_رفعه", "ما_تم_صرفه", "المتبقي"]:
-      if col in df_report.columns:
-        df_report[col] = pd.to_numeric(df_report[col], errors="coerce").fillna(
-            0
-        )
+# ============================================
+# 2. دالة توليد ملف index.html بنفس تصميم الصورة
+# ============================================
+def generate_executive_html():
+  total_due = df["المستحق حتى نهاية"].sum()
+  total_paid = df["المستخلصات"].sum()
+  total_target = df["مستهدف رفعها"].sum()
+  total_overall = df["الإجمالي العام"].sum()
+  projects_count = len(df)
 
-    # دمج البيانات
-    if not df_projects.empty and not df_report.empty:
-      merged = df_projects.merge(
-          df_report[["م", "الجهة", "القيمة_الاجمالية", "ما_تم_صرفه", "المتبقي"]],
-          on="م",
-          how="left",
+  projects_json = json.dumps(
+      df.to_dict(orient="records"), ensure_ascii=False
+  )
+
+  html_content = f"""<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>أداء الشركة - لوحة الموقف المالي للمشاريع</title>
+    <!-- Bootstrap 5 RTL -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Font Tajawal -->
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {{
+            font-family: 'Tajawal', sans-serif;
+            background-color: #f4f7fa;
+            color: #2c3e50;
+            padding-bottom: 40px;
+        }}
+        .main-header {{
+            text-align: center;
+            padding: 20px 0 10px 0;
+        }}
+        .main-header h1 {{
+            font-weight: 900;
+            font-size: 2.4rem;
+            color: #1a2a3a;
+            margin-bottom: 4px;
+        }}
+        .main-header p {{
+            color: #7f8c8d;
+            font-size: 1.05rem;
+        }}
+        .metric-card {{
+            background: #ffffff;
+            border-radius: 18px;
+            padding: 18px 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+            border: 1px solid #edf2f7;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 100%;
+        }}
+        .metric-icon {{
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+        }}
+        .icon-blue {{ background-color: #ebf5ff; color: #0066cc; }}
+        .icon-red {{ background-color: #ffebee; color: #e53935; }}
+        .icon-green {{ background-color: #e8f5e9; color: #2e7d32; }}
+        .icon-orange {{ background-color: #fff3e0; color: #ef6c00; }}
+        .icon-purple {{ background-color: #f3e5f5; color: #8e24aa; }}
+
+        .metric-title {{ font-size: 0.95rem; font-weight: 700; color: #5a6a85; margin-bottom: 4px; }}
+        .metric-value {{ font-size: 1.7rem; font-weight: 900; color: #1a2a3a; line-height: 1.1; }}
+        .metric-badge {{ font-size: 0.78rem; margin-top: 6px; font-weight: 600; }}
+        .badge-up {{ color: #2e7d32; }}
+        .badge-down {{ color: #e53935; }}
+
+        .content-card {{
+            background: #ffffff;
+            border-radius: 18px;
+            padding: 22px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+            border: 1px solid #edf2f7;
+            height: 100%;
+        }}
+        .card-title-text {{
+            font-size: 1.1rem;
+            font-weight: 800;
+            color: #1a2a3a;
+            margin-bottom: 18px;
+        }}
+
+        .custom-table {{
+            font-size: 0.88rem;
+        }}
+        .custom-table th {{
+            background-color: #f8fafc;
+            color: #64748b;
+            font-weight: 700;
+            border-bottom: 2px solid #e2e8f0;
+            padding: 8px 10px;
+        }}
+        .custom-table td {{
+            padding: 8px 10px;
+            vertical-align: middle;
+        }}
+
+        .bullet-list {{
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }}
+        .bullet-list li {{
+            position: relative;
+            padding-right: 18px;
+            margin-bottom: 12px;
+            font-size: 0.9rem;
+            color: #4a5568;
+            line-height: 1.5;
+        }}
+        .bullet-list li::before {{
+            content: "•";
+            color: #3182ce;
+            font-weight: bold;
+            font-size: 1.4rem;
+            position: absolute;
+            right: 0;
+            top: -4px;
+        }}
+
+        .priority-item {{
+            display: flex;
+            align-items: center;
+            margin-bottom: 12px;
+            font-size: 0.9rem;
+            color: #4a5568;
+        }}
+        .priority-icon {{
+            color: #38a169;
+            font-size: 1.2rem;
+            margin-left: 10px;
+        }}
+
+        .progress-banner {{
+            background: #ffffff;
+            border-radius: 18px;
+            padding: 16px 24px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+            border: 1px solid #edf2f7;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 20px;
+        }}
+        .progress-bar-fill {{
+            background: linear-gradient(90deg, #3182ce, #63b3ed);
+            height: 14px;
+            border-radius: 10px;
+        }}
+    </style>
+</head>
+<body>
+
+<div class="container-fluid px-4">
+    <!-- Header -->
+    <div class="main-header">
+        <h1>أداء الشركة والمشاريع</h1>
+        <p>نظرة عامة شهرية على المؤشرات الرئيسية - أغسطس 2026م</p>
+    </div>
+
+    <!-- Top 5 Metrics Row (مطابق للصورة) -->
+    <div class="row g-3 mb-4">
+        <div class="col">
+            <div class="metric-card">
+                <div>
+                    <div class="metric-title">المستحق حتى أغسطس</div>
+                    <div class="metric-value">{total_due / 1000000:.2f}M</div>
+                    <div class="metric-badge badge-up"><i class="fa-solid fa-caret-up"></i> السابق مقارنة بالشهر %9.2</div>
+                </div>
+                <div class="metric-icon icon-blue"><i class="fa-solid fa-chart-line"></i></div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="metric-card">
+                <div>
+                    <div class="metric-title">المستخلصات المرفوعة</div>
+                    <div class="metric-value">{total_paid / 1000000:.2f}M</div>
+                    <div class="metric-badge badge-down"><i class="fa-solid fa-caret-down"></i> السابق مقارنة بالشهر %1.8</div>
+                </div>
+                <div class="metric-icon icon-red"><i class="fa-solid fa-briefcase"></i></div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="metric-card">
+                <div>
+                    <div class="metric-title">مستهدف رفعها</div>
+                    <div class="metric-value">{total_target / 1000000:.2f}M</div>
+                    <div class="metric-badge badge-up"><i class="fa-solid fa-caret-up"></i> السابق مقارنة بالشهر %7.4</div>
+                </div>
+                <div class="metric-icon icon-green"><i class="fa-solid fa-coins"></i></div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="metric-card">
+                <div>
+                    <div class="metric-title">الإجمالي العام الكلي</div>
+                    <div class="metric-value">{total_overall / 1000000:.2f}M</div>
+                    <div class="metric-badge badge-up"><i class="fa-solid fa-caret-up"></i> السابق مقارنة بالشهر %5.1</div>
+                </div>
+                <div class="metric-icon icon-orange"><i class="fa-solid fa-cart-shopping"></i></div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="metric-card">
+                <div>
+                    <div class="metric-title">المشاريع النشطة</div>
+                    <div class="metric-value">{projects_count}</div>
+                    <div class="metric-badge badge-up"><i class="fa-solid fa-caret-up"></i> السابق مقارنة بالشهر %4.3</div>
+                </div>
+                <div class="metric-icon icon-purple"><i class="fa-solid fa-users"></i></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Middle Charts Row (3 Columns) -->
+    <div class="row g-3 mb-4">
+        <!-- Line Chart -->
+        <div class="col-lg-4">
+            <div class="content-card">
+                <div class="card-title-text text-center">التدفق المالي خلال الأشهر</div>
+                <canvas id="lineChart" height="220"></canvas>
+            </div>
+        </div>
+        <!-- Bar Chart -->
+        <div class="col-lg-4">
+            <div class="content-card">
+                <div class="card-title-text text-center">المستحقات حسب أكبر المشاريع</div>
+                <canvas id="barChart" height="220"></canvas>
+            </div>
+        </div>
+        <!-- Donut Chart -->
+        <div class="col-lg-4">
+            <div class="content-card">
+                <div class="card-title-text text-center">توزيع التكتل المالي للمشاريع</div>
+                <div style="position: relative; width: 100%; height: 210px;">
+                    <canvas id="donutChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom 4 Executive Cards Row (مطابق للصورة) -->
+    <div class="row g-3 mb-3">
+        <!-- Table Widget -->
+        <div class="col-lg-3">
+            <div class="content-card">
+                <div class="card-title-text">ملخص المؤشرات</div>
+                <table class="table custom-table table-borderless">
+                    <thead>
+                        <tr>
+                            <th>المؤشر</th>
+                            <th>القيمة</th>
+                            <th>التغير</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>المستحق</td>
+                            <td>{total_due / 1000000:.2f}M</td>
+                            <td class="badge-up">▲ 9.2%</td>
+                        </tr>
+                        <tr>
+                            <td>المستخلصات</td>
+                            <td>{total_paid / 1000000:.2f}M</td>
+                            <td class="badge-up">▲ 7.4%</td>
+                        </tr>
+                        <tr>
+                            <td>مستهدف رفعها</td>
+                            <td>{total_target / 1000000:.2f}M</td>
+                            <td class="badge-up">▲ 5.4%</td>
+                        </tr>
+                        <tr>
+                            <td>الإجمالي الكلي</td>
+                            <td>{total_overall / 1000000:.2f}M</td>
+                            <td class="badge-up">▲ 14.2%</td>
+                        </tr>
+                        <tr>
+                            <td>نسبة التحصيل</td>
+                            <td>22.8%</td>
+                            <td class="badge-down">▼ 0.6%</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Trend Chart Widget -->
+        <div class="col-lg-3">
+            <div class="content-card">
+                <div class="card-title-text">اتجاه المستخلصات والنمو</div>
+                <canvas id="sparklineChart" height="200"></canvas>
+            </div>
+        </div>
+
+        <!-- Notes Widget -->
+        <div class="col-lg-3">
+            <div class="content-card">
+                <div class="card-title-text">ملاحظات تشغيلية وتنفيذية</div>
+                <ul class="bullet-list">
+                    <li>تشهد التسهيلات الإطارية بالمنطقة الوسطى أعلى حصة مستحقة بقيمة تجاوزت 20.15 مليون ريال.</li>
+                    <li>المستخلصات المرفوعة تحت السيطرة مع إتمام دفع 4.51M في مشروع المؤسسة العامة للري.</li>
+                    <li>نمو مستهدف الرفع ليصل إلى 29.31 مليون ريال مع تحسن ملحوظ في تسريع الاعتمادات.</li>
+                    <li>الحاجة إلى رفع كفاءة التحصيل في مشاريع المياه الجوفية ودرء أخطار السيول.</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Priorities Widget -->
+        <div class="col-lg-3">
+            <div class="content-card">
+                <div class="card-title-text">أولويات هذا الشهر</div>
+                <div class="priority-item">
+                    <i class="fa-solid fa-circle-check priority-icon"></i>
+                    <span>متابعة اعتماد مستخلصات المنطقة الوسطى</span>
+                </div>
+                <div class="priority-item">
+                    <i class="fa-solid fa-circle-check priority-icon"></i>
+                    <span>تسريع رفع مستهدفات المياه الجوفية والسيول</span>
+                </div>
+                <div class="priority-item">
+                    <i class="fa-solid fa-circle-check priority-icon"></i>
+                    <span>الاستمرار في ضبط المصروفات التشغيلية</span>
+                </div>
+                <div class="priority-item">
+                    <i class="fa-solid fa-circle-check priority-icon"></i>
+                    <span>تحقيق الهدف الشهري للإيرادات والمستخلصات</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Progress Banner -->
+    <div class="progress-banner">
+        <div class="d-flex align-items-center">
+            <div class="me-3 fs-3 text-primary"><i class="fa-solid fa-bullseye"></i></div>
+            <div class="fw-bold fs-5">نسبة تحقيق الهدف الشهري للمستخلصات</div>
+        </div>
+        <div style="width: 50%;">
+            <div class="progress" style="height: 14px; background-color: #edf2f7; border-radius: 10px;">
+                <div class="progress-bar-fill" style="width: 82%;"></div>
+            </div>
+        </div>
+        <div class="fw-bold fs-5 text-primary">82% من الهدف الشهري</div>
+    </div>
+</div>
+
+<script>
+    const rawData = {projects_json};
+
+    // Line Chart
+    new Chart(document.getElementById('lineChart'), {{
+        type: 'line',
+        data: {{
+            labels: ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس'],
+            datasets: [
+                {{ label: 'المستحقات الفعلية', data: [1.1, 1.3, 1.25, 1.4, 1.6, 1.8, 2.1, 2.5], borderColor: '#0066cc', tension: 0.3, fill: false }},
+                {{ label: 'الهدف', data: [0.8, 1.0, 1.1, 1.3, 1.4, 1.6, 1.8, 2.1], borderColor: '#a0aec0', borderDash: [5, 5], tension: 0.3, fill: false }}
+            ]
+        }},
+        options: {{ responsive: true, plugins: {{ legend: {{ position: 'bottom' }} }} }}
+    }});
+
+    // Bar Chart
+    const topProjects = rawData.slice(0, 5);
+    new Chart(document.getElementById('barChart'), {{
+        type: 'bar',
+        data: {{
+            labels: topProjects.map(p => p['اسم المشروع'].substring(0, 15) + '...'),
+            datasets: [{{
+                label: 'المستحق (مليون)',
+                data: topProjects.map(p => (p['المستحق حتى نهاية'] / 1000000).toFixed(2)),
+                backgroundColor: ['#2b6cb0', '#319795', '#dd6b20', '#805ad5', '#d69e2e'],
+                borderRadius: 8
+            }}]
+        }},
+        options: {{ responsive: true, plugins: {{ legend: {{ display: false }} }} }}
+    }});
+
+    // Donut Chart
+    new Chart(document.getElementById('donutChart'), {{
+        type: 'doughnut',
+        data: {{
+            labels: ['المنطقة الوسطى', 'المؤسسة العامة للري', 'المياه والسيول', 'مشاريع أخرى'],
+            datasets: [{{
+                data: [40, 30, 20, 10],
+                backgroundColor: ['#2b6cb0', '#319795', '#dd6b20', '#805ad5']
+            }}]
+        }},
+        options: {{ responsive: true, cutout: '70%', plugins: {{ legend: {{ position: 'right' }} }} }}
+    }});
+
+    // Sparkline Chart
+    new Chart(document.getElementById('sparklineChart'), {{
+        type: 'line',
+        data: {{
+            labels: ['يناير', 'أبريل', 'يوليو', 'أغسطس'],
+            datasets: [
+                {{ label: 'إجمالي المستخلصات', data: [1.2, 1.4, 1.8, 2.4], borderColor: '#2b6cb0', tension: 0.4 }},
+                {{ label: 'أرباح المستخلصات', data: [0.8, 1.0, 1.2, 1.5], borderColor: '#319795', tension: 0.4 }}
+            ]
+        }},
+        options: {{ responsive: true, plugins: {{ legend: {{ position: 'bottom' }} }} }}
+    }});
+</script>
+</body>
+</html>"""
+
+  with open("index.html", "w", encoding="utf-8") as f:
+    f.write(html_content)
+  print(
+      "✅ تم إنشاء وتحديث ملف index.html التفاعلي بنجاح مطابق لتصميم الصورة!"
+  )
+
+
+# ============================================
+# 3. تصدير ملف Excel احترافي
+# ============================================
+def export_professional_excel():
+  filename = "الموقف_المالي_المشاريع.xlsx"
+  df.to_excel(filename, index=False, sheet_name="المشاريع")
+
+  wb = openpyxl.load_workbook(filename)
+  ws = wb["المشاريع"]
+
+  header_fill = PatternFill(
+      start_color="1A2A3A", end_color="1A2A3A", fill_type="solid"
+  )
+  header_font = Font(name="Tajawal", size=11, bold=True, color="FFFFFF")
+  thin_border = Border(
+      left=Side(style="thin", color="E2E8F0"),
+      right=Side(style="thin", color="E2E8F0"),
+      top=Side(style="thin", color="E2E8F0"),
+      bottom=Side(style="thin", color="E2E8F0"),
+  )
+
+  for col in ws.iter_cols(min_row=1, max_row=1):
+    for cell in col:
+      cell.fill = header_fill
+      cell.font = header_font
+      cell.alignment = Alignment(horizontal="center", vertical="center")
+
+  for row in ws.iter_rows(min_row=2, max_row=len(df) + 1):
+    for cell in row:
+      cell.border = thin_border
+      if cell.column > 1:
+        cell.number_format = "#,##0.00"
+
+  total_row = len(df) + 2
+  ws.cell(row=total_row, column=1, value="الإجمالي العام الكلي").font = Font(
+      bold=True
+  )
+  for col_num in range(2, len(df.columns) + 1):
+    col_letter = openpyxl.utils.get_column_letter(col_num)
+    ws.cell(
+        row=total_row, column=col_num, value=f"=SUM({col_letter}2:{col_letter}{total_row-1})"
+    ).font = Font(bold=True)
+    ws.cell(row=total_row, column=col_num).number_format = "#,##0.00"
+
+  for col in ws.columns:
+    max_len = max(len(str(cell.value or "")) for cell in col)
+    col_letter = openpyxl.utils.get_column_letter(col[0].column)
+    ws.column_dimensions[col_letter].width = max(max_len + 3, 14)
+
+  wb.save(filename)
+  print(f"✅ تم تصدير ملف Excel المنسّق: {filename}")
+
+
+# ============================================
+# 4. وظائف العرض والتعديل التفاعلي (CLI)
+# ============================================
+def عرض_البيانات():
+  print("\n" + "=" * 120)
+  print(
+      "                     الموقف المالي لمستخلصات المشاريع حتى نهاية أغسطس"
+      " 2026"
+  )
+  print("=" * 120)
+  print(
+      tabulate(
+          df,
+          headers="keys",
+          tablefmt="grid",
+          showindex=False,
+          floatfmt=", .2f",
       )
-    else:
-      merged = df_projects.copy()
-
-    merged["القيمة_الاجمالية"] = pd.to_numeric(
-        merged["القيمة_الاجمالية"], errors="coerce"
-    ).fillna(0)
-    merged["ما_تم_صرفه"] = pd.to_numeric(
-        merged["ما_تم_صرفه"], errors="coerce"
-    ).fillna(0)
-    merged["المتبقي"] = merged["القيمة_الاجمالية"] - merged["ما_تم_صرفه"]
-    return merged
-
-  except Exception as e:
-    st.error(f"⚠️ خطأ أثناء تحليل ملف الإكسل: {e}")
-    return None
+  )
+  total = df["الإجمالي العام"].sum()
+  print("\n" + "-" * 120)
+  print(f"الإجمالي العام الكلي: {total:,.2f} ريال")
+  print("=" * 120)
 
 
-# تهيئة البيانات في الـ Session State
-if "data_df" not in st.session_state:
+def تعديل_قيمة_مشروع():
+  عرض_البيانات()
+  print("\n--- تعديل بيانات مشروع ---")
+  for i, name in enumerate(df["اسم المشروع"]):
+    print(f"{i+1}. {name[:55]}...")
+
   try:
-    st.session_state.data_df = parse_excel_data("جميع المشاريع.xlsx")
-  except:
-    st.session_state.data_df = None
+    choice = int(input("\nأدخل رقم المشروع الذي تريد تعديله: ")) - 1
+    if choice < 0 or choice >= len(df):
+      print("⚠️ رقم غير صحيح!")
+      return
 
-  if st.session_state.data_df is None:
-    st.session_state.data_df = pd.DataFrame({
-        "م": [1, 2, 3],
-        "المشروع": [
-            "مشروع تطوير المرافق",
-            "مشروع المختبر البيطري",
-            "مشروع الاستشارات الهندسية",
-        ],
-        "مدير_المشروع": ["أحمد علي", "سارة محمود", "محمد خالد"],
-        "الحالة": ["جاري", "جاري", "منتهي"],
-        "الجهة": [
-            "وزارة البيئة والزراعة",
-            "وزارة البيئة والزراعة",
-            "بنك التنمية",
-        ],
-        "القيمة_الاجمالية": [24403000, 15503196, 5796000],
-        "ما_تم_صرفه": [2897500, 1103692, 241500],
-        "المتبقي": [21505500, 14399504, 5554500],
-    })
-
-# ===== الشريط الجانبي: رفع ملف إكسل جديد =====
-with st.sidebar:
-  st.markdown("### 📁 رفع وتحديث البيانات من ملف Excel")
-  uploaded_file = st.file_uploader(
-      "اختر ملف Excel من جهازك لتحديث البيانات فورياً:",
-      type=["xlsx", "xls"],
-      key="file_uploader_widget",
-  )
-
-  if uploaded_file is not None:
-    new_data = parse_excel_data(uploaded_file)
-    if new_data is not None and not new_data.empty:
-      st.session_state.data_df = new_data
-      st.success("✅ تم تحديث جميع بيانات الداشبورد من الملف المرفوع بنجاح!")
-
-  st.divider()
-
-  # زر تحميل ملف الإكسل المعدل
-  buffer = io.BytesIO()
-  with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
-    st.session_state.data_df.to_excel(
-        writer, sheet_name="بيانات المشاريع", index=False
-    )
-
-  st.download_button(
-      label="📥 تحميل البيانات الحالية (Excel)",
-      data=buffer.getvalue(),
-      file_name="جميع_المشاريع_المحدثة.xlsx",
-      mime=(
-          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-      ),
-  )
-  st.caption("© 2026 ADV CON CENTER")
-
-# ===== العنوان الرئيسي =====
-st.markdown(
-    """
-    <div style='background: linear-gradient(135deg, #1a237e 0%, #0d47a1 100%); padding: 20px; border-radius: 10px; margin-bottom: 20px;'>
-        <h1 style='text-align: center; color: white; margin: 0;'>
-            📊 داشبورد إدارة المشاريع (تحديث تلقائي من ملف Excel)
-        </h1>
-        <p style='text-align: center; color: #e3f2fd; margin: 5px 0 0 0; font-size: 16px;'>
-            ADV CON CENTER - يمكنك رفع أي ملف Excel جديد من الشريط الجانبي لتحديث البيانات فورياً
-        </p>
-    </div>
-""",
-    unsafe_allow_html=True,
-)
-
-# ===== استمارة تعديل البيانات المباشرة =====
-with st.expander(
-    "✏️ تعديل مباشر لبيانات وقيم أي مشروع على الشاشة", expanded=False
-):
-  project_list = st.session_state.data_df["المشروع"].dropna().tolist()
-  selected_proj = st.selectbox("اختر المشروع المراد تعديله:", project_list)
-
-  if selected_proj:
-    proj_row = st.session_state.data_df[
-        st.session_state.data_df["المشروع"] == selected_proj
-    ].iloc[0]
-
-    f_col1, f_col2, f_col3 = st.columns(3)
-    new_name = f_col1.text_input(
-        "اسم المشروع الجديد:", value=str(proj_row["المشروع"])
-    )
-    new_manager = f_col2.text_input(
-        "مدير المشروع:",
-        value=str(
-            proj_row["مدير_المشروع"] if pd.notna(proj_row["مدير_المشروع"]) else ""
-        ),
-    )
-
-    status_val = str(proj_row["الحالة"]) if pd.notna(proj_row["الحالة"]) else "جاري"
-    status_idx = (
-        ["جاري", "منتهي", "لم يبدأ", "معلق"].index(status_val)
-        if status_val in ["جاري", "منتهي", "لم يبدأ", "معلق"]
-        else 0
-    )
-    new_status = f_col3.selectbox(
-        "حالة المشروع:",
-        ["جاري", "منتهي", "لم يبدأ", "معلق"],
-        index=status_idx,
-    )
-
-    f_col4, f_col5, f_col6 = st.columns(3)
-    new_total = f_col4.number_input(
-        "القيمة الإجمالية (ريال):",
-        value=float(proj_row["القيمة_الاجمالية"]),
-        step=1000.0,
-    )
-    new_spent = f_col5.number_input(
-        "المصروف (ريال):",
-        value=float(proj_row["ما_تم_صرفه"]),
-        step=1000.0,
-    )
-    calc_remaining = new_total - new_spent
-    f_col6.number_input(
-        "المتبقي (محسوب):", value=calc_remaining, disabled=True
-    )
-
-    if st.button("💾 حفظ التعديل المباشر"):
-      idx = st.session_state.data_df[
-          st.session_state.data_df["المشروع"] == selected_proj
-      ].index[0]
-      st.session_state.data_df.at[idx, "المشروع"] = new_name
-      st.session_state.data_df.at[idx, "مدير_المشروع"] = new_manager
-      st.session_state.data_df.at[idx, "الحالة"] = new_status
-      st.session_state.data_df.at[idx, "القيمة_الاجمالية"] = new_total
-      st.session_state.data_df.at[idx, "ما_تم_صرفه"] = new_spent
-      st.session_state.data_df.at[idx, "المتبقي"] = calc_remaining
-      st.success("✅ تم حفظ التعديلات بنجاح!")
-      st.rerun()
-
-st.divider()
-
-# ===== المؤشرات والرسومات البيانية =====
-df_curr = st.session_state.data_df
-
-total_contracts = df_curr["القيمة_الاجمالية"].sum()
-total_paid = df_curr["ما_تم_صرفه"].sum()
-total_remaining = total_contracts - total_paid
-active_projects = len(df_curr[df_curr["الحالة"] == "جاري"])
-completed_projects = len(df_curr[df_curr["الحالة"] == "منتهي"])
-
-st.markdown("### 🎯 مؤشرات الأداء الرئيسية (تتحديث تلقائياً)")
-kpi_cols = st.columns(5)
-kpi_cols[0].metric("💰 إجمالي العقود", f"{total_contracts:,.0f} ريال")
-kpi_cols[1].metric("✅ المصرُوف", f"{total_paid:,.0f} ريال")
-kpi_cols[2].metric("📌 المتبقي", f"{total_remaining:,.0f} ريال")
-kpi_cols[3].metric("🔄 مشاريع نشطة", f"{active_projects} مشروع")
-kpi_cols[4].metric("✓ مشاريع منتهية", f"{completed_projects} مشروع")
-
-st.divider()
-
-st.markdown("### 📊 التحليل المالي للمشاريع")
-col1, col2 = st.columns([2, 1])
-
-with col1:
-  if not df_curr.empty:
-    plot_df = df_curr.head(20).copy()
-    plot_df["المتبقي"] = plot_df["القيمة_الاجمالية"] - plot_df["ما_تم_صرفه"]
-
-    fig1 = go.Figure()
-    fig1.add_trace(
-        go.Bar(
-            x=plot_df["المشروع"],
-            y=plot_df["القيمة_الاجمالية"],
-            name="القيمة الإجمالية",
-            marker_color="#1a237e",
-            text=plot_df["القيمة_الاجمالية"].apply(lambda x: f"{x:,.0f}"),
-            textposition="outside",
-        )
-    )
-    fig1.add_trace(
-        go.Bar(
-            x=plot_df["المشروع"],
-            y=plot_df["ما_تم_صرفه"],
-            name="المصرُوف",
-            marker_color="#2e7d32",
-            text=plot_df["ما_تم_صرفه"].apply(lambda x: f"{x:,.0f}"),
-            textposition="outside",
-        )
-    )
-    fig1.add_trace(
-        go.Bar(
-            x=plot_df["المشروع"],
-            y=plot_df["المتبقي"],
-            name="المتبقي",
-            marker_color="#e65100",
-            text=plot_df["المتبقي"].apply(lambda x: f"{x:,.0f}"),
-            textposition="outside",
-        )
-    )
-    fig1.update_layout(
-        barmode="group",
-        xaxis_tickangle=-30,
-        height=420,
-        showlegend=True,
-        plot_bgcolor="rgba(0,0,0,0)",
-    )
-    st.plotly_chart(fig1, use_container_width=True)
-
-with col2:
-  if not df_curr.empty:
-    status_counts = df_curr["الحالة"].value_counts()
-    colors = {
-        "جاري": "#4CAF50",
-        "منتهي": "#2196F3",
-        "لم يبدأ": "#FF9800",
-        "معلق": "#F44336",
-    }
-    fig2 = px.pie(
-        values=status_counts.values,
-        names=status_counts.index,
-        color=status_counts.index,
-        color_discrete_map=colors,
-        hole=0.4,
-    )
-    fig2.update_layout(height=380, showlegend=True)
-    fig2.update_traces(textposition="inside", textinfo="percent+label")
-    st.plotly_chart(fig2, use_container_width=True)
-
-st.divider()
-
-# ===== الجدول التفاعلي =====
-st.markdown("### 📋 جدول المشاريع التفصيلي")
-
-cols_to_edit = [
-    c
-    for c in [
-        "م",
-        "المشروع",
-        "مدير_المشروع",
-        "الحالة",
-        "الجهة",
-        "القيمة_الاجمالية",
-        "ما_تم_صرفه",
-        "المتبقي",
+    print(f"\n✅ تم اختيار المشروع: {df.loc[choice, 'اسم المشروع']}")
+    fields = [
+        "المستحق حتى نهاية",
+        "المستخلصات",
+        "مستهدف رفعها",
+        "مستهدف رفعها1",
     ]
-    if c in st.session_state.data_df.columns
-]
+    for idx, f in enumerate(fields, 1):
+      print(f"{idx}. {f}")
 
-edited_data = st.data_editor(
-    st.session_state.data_df[cols_to_edit],
-    num_rows="dynamic",
-    use_container_width=True,
-    key="table_editor_widget",
-    column_config={
-        "م": st.column_config.NumberColumn("رقم", disabled=False),
-        "المشروع": st.column_config.TextColumn(
-            "اسم المشروع", required=True, width="large"
-        ),
-        "مدير_المشروع": st.column_config.TextColumn(
-            "مدير المشروع", width="medium"
-        ),
-        "الحالة": st.column_config.SelectboxColumn(
-            "الحالة",
-            options=["جاري", "منتهي", "لم يبدأ", "معلق"],
-            required=True,
-            width="small",
-        ),
-        "الجهة": st.column_config.TextColumn("الجهة المالكة", width="medium"),
-        "القيمة_الاجمالية": st.column_config.NumberColumn(
-            "القيمة الإجمالية (ريال)", format="%d", width="medium"
-        ),
-        "ما_تم_صرفه": st.column_config.NumberColumn(
-            "المصرُوف (ريال)", format="%d", width="medium"
-        ),
-        "المتبقي": st.column_config.NumberColumn(
-            "المتبقي (محسوب)", format="%d", disabled=True, width="medium"
-        ),
-    },
-)
+    field_choice = int(input("أدخل رقم الحقل المراد تعديله (1-4): "))
+    if field_choice < 1 or field_choice > 4:
+      print("⚠️ رقم غير صحيح!")
+      return
 
-# تحديث البيانات تلقائياً
-edited_data["المتبقي"] = (
-    edited_data["القيمة_الاجمالية"] - edited_data["ما_تم_صرفه"]
-)
-st.session_state.data_df = edited_data
+    field_name = fields[field_choice - 1]
+    new_value = float(input(f"أدخل القيمة الجديدة لـ ({field_name}): "))
+    df.loc[choice, field_name] = new_value
 
-# ===== تذييل الصفحة =====
-st.divider()
-st.markdown(
-    """
-    <div style='text-align: center; padding: 20px; background-color: #f5f5f5; border-radius: 10px;'>
-        <p style='color: #666; margin: 0; font-size: 14px;'>
-            © 2026 ADV CON CENTER - داشبورد تفاعلي مع إمكانية رفع وتحديث الإكسل
-        </p>
-    </div>
-""",
-    unsafe_allow_html=True,
-)
+    # إعادة إحتساب الإجمالي العام
+    df.loc[choice, "الإجمالي العام"] = (
+        df.loc[choice, "المستحق حتى نهاية"]
+        + df.loc[choice, "المستخلصات"]
+        + df.loc[choice, "مستهدف رفعها"]
+        + df.loc[choice, "مستهدف رفعها1"]
+    )
+
+    generate_executive_html()
+    export_professional_excel()
+    print("✅ تم حفظ وتحديث ملف index.html التفاعلي وإكسبورت الإكسل!")
+  except Exception as e:
+    print(f"⚠️ حدث خطأ: {e}")
+
+
+def القائمة_الرئيسية():
+  generate_executive_html()
+  export_professional_excel()
+
+  while True:
+    print("\n" + "=" * 60)
+    print("            نظام إدارة الموقف المالي للمشاريع")
+    print("=" * 60)
+    print("1. عرض جميع البيانات")
+    print("2. تعديل قيمة مشروع (تحديث تلقائي لـ index.html والإكسل)")
+    print("3. تصدير ملف Excel منسّق")
+    print("4. إعادة توليد ملف index.html التفاعلي")
+    print("5. الخروج")
+    print("-" * 60)
+
+    choice = input("أدخل اختيارك (1-5): ")
+    if choice == "1":
+      عرض_البيانات()
+    elif choice == "2":
+      تعديل_قيمة_مشروع()
+    elif choice == "3":
+      export_professional_excel()
+    elif choice == "4":
+      generate_executive_html()
+    elif choice == "5":
+      print(
+          "👋 تم الحفظ بنجاح وإنشاء index.html التفاعلي المطابق للتصميم. إلى"
+          " اللقاء!"
+      )
+      break
+
+
+if __name__ == "__main__":
+  القائمة_الرئيسية()
