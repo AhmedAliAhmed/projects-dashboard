@@ -29,7 +29,7 @@ def check_password(password):
     return hashlib.sha256(password.encode()).hexdigest() == PASSWORD_HASH
 
 # -----------------------------
-# 1. البيانات الأولية لمستخلصات المشاريع 2026م (يمكنك تغيير الأرقام هنا أيضاً)
+# 1. البيانات الأولية لمستخلصات المشاريع 2026م
 # -----------------------------
 data = [
     ["PRJ-001", "تقديم الخدمات الاستشارية لدراسة تطوير خطط تشغيل و صيانة المرافق الهامة", "وزارة البيئة و المياه و الزراعة", "قيد التنفيذ", 628950.00, 0.00, 0.00, 628950.00],
@@ -364,7 +364,7 @@ def main_layout():
                         html.Div(
                             style={"display": "flex", "justifyContent": "space-between", "alignItems": "center", "marginBottom": 10},
                             children=[
-                                html.Div(style={"fontWeight": 800, "fontSize": 16}, children="✏️ جدول المستخلصات (يمكنك التعديل المباشر على الأرقام في الخنايا أدناه)"),
+                                html.Div(style={"fontWeight": 800, "fontSize": 16}, children="✏️ جدول المستخلصات (يمكنك التعديل المباشر على الأرقام في الخلايا أدناه)"),
                                 html.Div(style={"display": "flex", "gap": "10px"}, children=[
                                     dbc.Button("📥 تصدير CSV", id="export-btn", color="secondary", size="sm"),
                                     dbc.Button("🗑️ حذف المشروع المحدد", id="delete-selected-btn", color="danger", size="sm"),
@@ -374,7 +374,7 @@ def main_layout():
                         dcc.Loading(children=[
                             dash_table.DataTable(
                                 id="projects-table",
-                                editable=True,  # تمكين التعديل المباشر من الجدول
+                                editable=True,
                                 row_deletable=True,
                                 style_table={"overflowX": "auto", "background": "#0f1830", "borderRadius": "12px"},
                                 style_cell={"textAlign": "right", "padding": "10px", "background": "#0f1830", "color": "white", "border": "1px solid rgba(255,255,255,0.06)", "fontFamily": "Tajawal, Cairo, Arial, sans-serif"},
@@ -863,7 +863,7 @@ def refresh_all_store(n_clicks, store_data):
     return df.to_dict("records")
 
 # ================================================================
-# 10. تشغيل التطبيق
+# 10. تشغيل التطبيق (استخدام app.run الحديث بدلاً من app.run_server)
 # ================================================================
 if __name__ == "__main__":
-    app.run_server(host="0.0.0.0", port=8050, debug=True)
+    app.run(host="0.0.0.0", port=8050, debug=False)
