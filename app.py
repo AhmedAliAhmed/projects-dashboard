@@ -1,869 +1,392 @@
-# ================================================================
-# 0. المكتبات الأساسية
-# ================================================================
-from datetime import datetime
-import io
-import dash
-import dash_bootstrap_components as dbc
-from dash import Input, Output, State, callback_context, dash_table, dcc, html
+import streamlit as st
 import pandas as pd
-import plotly.graph_objects as go
 import plotly.express as px
-import hashlib
-import numpy as np
-from sklearn.linear_model import LinearRegression
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import mean_squared_error, r2_score
-from sklearn.preprocessing import MinMaxScaler
-from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor, AdaBoostRegressor, BaggingRegressor, ExtraTreesRegressor
-from sklearn.tree import DecisionTreeRegressor
-import warnings
-warnings.filterwarnings('ignore')
+import plotly.graph_objects as go
+from datetime import datetime
+import os
 
-# -----------------------------
-# 0.5 نظام الحماية بكلمة مرور
-# -----------------------------
-PASSWORD_HASH = hashlib.sha256("123456".encode()).hexdigest()
+# ============================================
+# 1. إعداد الصفحة وتنسيق الخطوط (RTL)
+# ============================================
+st.set_page_config(
+    page_title="لوحة مستخلصات أداء المشاريع",
+    page_icon="📈",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
-def check_password(password):
-    return hashlib.sha256(password.encode()).hexdigest() == PASSWORD_HASH
-
-# -----------------------------
-# 1. البيانات الأولية لمستخلصات المشاريع 2026م (يمكنك تغيير الأرقام هنا أيضاً)
-# -----------------------------
-data = [
-    ["PRJ-001", "تقديم الخدمات الاستشارية لدراسة تطوير خطط تشغيل و صيانة المرافق الهامة", "وزارة البيئة و المياه و الزراعة", "قيد التنفيذ", 628950.00, 0.00, 0.00, 628950.00],
-    ["PRJ-002", "الاشراف علي تصميم و انشاء المختبر البيطري المركزي", "وزارة البيئة و المياه و الزراعة", "قيد التنفيذ", 832900.15, 0.00, 394531.65, 394531.65],
-    ["PRJ-003", "تقديم الخدمات الاستشارية للاشراف علي المشاريع الهندسية ببنك التنمية", "بنك التنمية", "مكتمل", 241500.00, 241500.00, 0.00, 0.00],
-    ["PRJ-004", "الاتفاقية الاطارية لخدمات الاشراف علي مشاريع إدارة المرافق بالمنطقة الوسطي", "شركة تطوير المباني (TBC)", "قيد التنفيذ", 19666576.68, 0.00, 5857186.10, 13809390.58],
-    ["PRJ-005", "الاشراف علي إدارة المرافق بالمنطقة الجنوبية", "شركة تطوير المباني (TBC)", "قيد التنفيذ", 4222488.43, 0.00, 3222488.43, 1000000.00],
-    ["PRJ-006", "الخدمات الاستشارية للاستفادة من المياه الجوفية و السطحية و مشاريع درء اخطار السيول", "وزارة البيئة و المياه و الزراعة", "قيد التنفيذ", 3261425.00, 1187950.00, 1040750.00, 1032725.00],
-    ["PRJ-007", "الاتفاقية الاطارية لتصميم مشاريع المؤسسة العامة للري امر عمل (02)", "المؤسسة العامة للري", "قيد التنفيذ", 5398330.00, 4508000.00, 0.00, 890330.00],
-    ["PRJ-008", "ترميز مباني التراث المعماري وسط الرياض", "وزارة الثقافة", "قيد التنفيذ", 3910460.00, 0.00, 0.00, 3910460.00],
-    ["PRJ-009", "دراسة و تصميم مشروع انشاء قاعة الطعام بالمقر الرئيسي", "المؤسسة العامة للري", "مكتمل", 439875.00, 439875.00, 0.00, 0.00],
-    ["PRJ-010", "مبالغ تم دفعها للهندسية ولم يتم تحصيلها", "القطاع الهندسي والمالي", "معلق", 2864500.00, 0.00, 0.00, 2864500.00],
-    ["PRJ-011", "الاشراف علي المشاريع الصغيرة بجميع مناطق المملكة (المرحلة الثانية)", "وزارة البيئة و المياه و الزراعة", "قيد التنفيذ", 2996034.00, 0.00, 0.00, 2996034.00],
-    ["PRJ-012", "الاتفاقية الاطارية لخدمات الاشراف علي مشاريع إدارة المرافق بالمنطقة الوسطي", "شركة تطوير المباني (TBC)", "قيد التنفيذ", 3800000.00, 0.00, 0.00, 3800000.00],
-]
-
-cols = [
-    "Project ID", "Project Name", "Client / Sector", "Status",
-    "Total Due Amount", "Submitted Claims", "Payment Orders Issued", "Targeted Claims"
-]
-
-def prepare_dataframe(raw_data):
-    if isinstance(raw_data, list) and len(raw_data) > 0 and isinstance(raw_data[0], list):
-        df = pd.DataFrame(raw_data, columns=cols)
-    else:
-        df = pd.DataFrame(raw_data)
-        
-    num_cols = ["Total Due Amount", "Submitted Claims", "Payment Orders Issued", "Targeted Claims"]
-    for c in num_cols:
-        if c in df.columns:
-            df[c] = pd.to_numeric(df[c], errors="coerce").fillna(0)
-
-    # إعادة حساب النسب المئوية تلقائياً
-    df["% Submitted"] = (df["Submitted Claims"] / df["Total Due Amount"].replace({0: pd.NA})).fillna(0)
-    df["% Payment Order"] = (df["Payment Orders Issued"] / df["Total Due Amount"].replace({0: pd.NA})).fillna(0)
-    df["% Targeted"] = (df["Targeted Claims"] / df["Total Due Amount"].replace({0: pd.NA})).fillna(0)
+# تنسيق واجهة المستخدم باللغة العربية خط Cairo وتنسيق RTL
+st.markdown("""
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap');
     
-    return df
-
-# -----------------------------
-# 2. بيانات تحليل النماذج (ML)
-# -----------------------------
-def generate_ml_data():
-    np.random.seed(42)
-    n_samples = 200
-    data_ml = pd.DataFrame({
-        'size': np.random.uniform(500, 5000, n_samples),
-        'rooms': np.random.randint(1, 10, n_samples),
-        'age': np.random.randint(0, 50, n_samples),
-        'location_score': np.random.uniform(1, 10, n_samples),
-        'price': np.random.uniform(100000, 1000000, n_samples)
-    })
-    data_ml['price'] = (
-        100000 +
-        data_ml['size'] * 150 +
-        data_ml['rooms'] * 20000 -
-        data_ml['age'] * 5000 +
-        data_ml['location_score'] * 30000 +
-        np.random.normal(0, 50000, n_samples)
-    )
-    return data_ml
-
-def train_and_evaluate_models():
-    df = generate_ml_data()
-    X = df[['size', 'rooms', 'age', 'location_score']]
-    y = df['price']
-    
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-    
-    scaler = MinMaxScaler()
-    X_train_scaled = scaler.fit_transform(X_train)
-    X_test_scaled = scaler.transform(X_test)
-    
-    models = {
-        'الانحدار الخطي': LinearRegression(),
-        'شجرة القرار': DecisionTreeRegressor(random_state=42, max_depth=10),
-        'الغابة العشوائية': RandomForestRegressor(n_estimators=100, random_state=42),
-        'تعزيز التدرج': GradientBoostingRegressor(random_state=42),
-        'AdaBoost': AdaBoostRegressor(random_state=42),
-        'Bagging': BaggingRegressor(random_state=42),
-        'Extra Trees': ExtraTreesRegressor(random_state=42),
+    html, body, [class*="css"], div, span, h1, h2, h3, h4, p {
+        font-family: 'Cairo', sans-serif !important;
+        direction: rtl;
+        text-align: right;
     }
     
-    results = []
-    for name, model in models.items():
-        model.fit(X_train_scaled, y_train)
-        y_pred = model.predict(X_test_scaled)
-        mse = mean_squared_error(y_test, y_pred)
-        r2 = r2_score(y_test, y_pred)
-        results.append({
-            'النموذج': name,
-            'MSE': round(mse, 2),
-            'R²': round(r2, 4),
-            'RMSE': round(np.sqrt(mse), 2)
-        })
+    /* بطاقات KPIs */
+    [data-testid="stMetric"] {
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        padding: 18px;
+        border-radius: 12px;
+        border: 1px solid #334155;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
     
-    return pd.DataFrame(results), df
+    [data-testid="stMetricValue"] {
+        font-size: 1.4rem !important;
+        font-weight: 700 !important;
+        color: #38bdf8 !important;
+    }
 
-ml_results, ml_data = train_and_evaluate_models()
+    [data-testid="stMetricLabel"] {
+        font-size: 0.95rem !important;
+        color: #94a3b8 !important;
+    }
+    
+    .stDataFrame {
+        border-radius: 10px;
+        overflow: hidden;
+    }
+</style>
+""", unsafe_allow_html=True)
 
-# -----------------------------
-# 3. إعداد تطبيق Dash
-# -----------------------------
-app = dash.Dash(
-    __name__,
-    external_stylesheets=[dbc.themes.DARKLY],
-    suppress_callback_exceptions=True,
-)
-server = app.server
-
-def fmt_money(x):
-    try:
-        x = float(x)
-    except:
-        return "0.00"
-    return f"{x:,.2f}"
-
-def fmt_pct_from_ratio(r):
-    try:
-        r = float(r)
-    except:
-        return "0.0%"
-    return f"{r*100:.1f}%"
-
-def create_card(title, value_text, subtitle="", icon=None, color_style="#0ea5e9"):
-    return html.Div(
-        className="card",
-        style={"borderLeft": f"4px solid {color_style}"},
-        children=[
-            html.Div(
-                style={"display": "flex", "alignItems": "center", "justifyContent": "space-between"},
-                children=[
-                    html.Div(className="card-title", children=title),
-                    html.Div(icon) if icon else html.Div(),
-                ],
-            ),
-            html.Div(className="card-value", style={"color": color_style}, children=value_text),
-            html.Div(className="card-subtitle", children=subtitle) if subtitle else html.Div(),
-        ],
-    )
-
-# Modal Form
-project_modal = dbc.Modal(
-    [
-        dbc.ModalHeader(dbc.ModalTitle("إدارة مستخلصات المشروع"), close_button=True),
-        dbc.ModalBody([
-            html.Div(id="modal-message", style={"color": "#ff6b6b", "marginBottom": "10px"}),
-            dbc.Row([
-                dbc.Col([dbc.Label("معرف المشروع"), dbc.Input(id="modal-project-id", type="text", placeholder="مثل: PRJ-013")], width=6),
-                dbc.Col([dbc.Label("اسم المشروع"), dbc.Input(id="modal-project-name", type="text", placeholder="اسم المشروع")], width=6),
-            ]),
-            dbc.Row([
-                dbc.Col([dbc.Label("القطاع / العميل"), dbc.Input(id="modal-client", type="text", placeholder="القطاع أو العميل")], width=6),
-                dbc.Col([dbc.Label("الحالة"), dbc.Select(id="modal-status", options=[{"label": s, "value": s} for s in ["قيد التنفيذ", "مكتمل", "معلق", "ملغي"]], value="قيد التنفيذ")], width=6),
-            ]),
-            dbc.Row([
-                dbc.Col([dbc.Label("المستخلصات المستحقة حتى النهاية"), dbc.Input(id="modal-total-due", type="number", placeholder="0")], width=6),
-                dbc.Col([dbc.Label("المستخلصات المرفوعة"), dbc.Input(id="modal-submitted-claims", type="number", placeholder="0")], width=6),
-            ]),
-            dbc.Row([
-                dbc.Col([dbc.Label("صدر لها أمر دفع"), dbc.Input(id="modal-payment-orders", type="number", placeholder="0")], width=6),
-                dbc.Col([dbc.Label("مستهدف رفعها"), dbc.Input(id="modal-targeted-claims", type="number", placeholder="0")], width=6),
-            ]),
-            dcc.Store(id="modal-edit-mode", data=None),
-        ]),
-        dbc.ModalFooter([
-            dbc.Button("إلغاء", id="modal-cancel", className="ms-auto", color="secondary"),
-            dbc.Button("حفظ المشروع", id="modal-save", color="primary"),
-        ]),
-    ],
-    id="project-modal",
-    size="lg",
-)
-
-# Login Layout
-def login_layout():
-    return html.Div(
-        style={"display": "flex", "justifyContent": "center", "alignItems": "center", "minHeight": "100vh", "background": "#0b1220", "fontFamily": "Tajawal, Cairo, Arial, sans-serif"},
-        children=[
-            html.Div(
-                style={"background": "linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02))", "border": "1px solid rgba(255,255,255,0.08)", "borderRadius": "20px", "padding": "40px", "maxWidth": "400px", "width": "100%", "textAlign": "center"},
-                children=[
-                    html.H2("🔐 الموقف المالي لمستخلصات المشاريع", style={"color": "white", "marginBottom": "10px"}),
-                    html.P("يرجى إدخال كلمة المرور للوصول لبيانات 2026م", style={"color": "rgba(255,255,255,0.7)", "marginBottom": "25px"}),
-                    dbc.Input(id="password-input", type="password", placeholder="أدخل كلمة المرور", style={"background": "#1a2332", "color": "white", "border": "1px solid rgba(255,255,255,0.1)", "borderRadius": "10px", "padding": "12px", "marginBottom": "15px", "width": "100%", "textAlign": "right"}),
-                    html.Div(id="login-error", style={"color": "#ef4444", "fontSize": "14px", "marginBottom": "15px"}),
-                    dbc.Button("تسجيل الدخول", id="login-btn", color="primary", style={"width": "100%", "fontWeight": "bold", "padding": "12px", "borderRadius": "10px"}),
-                    html.Div("🔑 كلمة المرور الافتراضية: 123456", style={"color": "rgba(255,255,255,0.4)", "fontSize": "12px", "marginTop": "15px"}),
-                ],
-            )
-        ],
-    )
-
-# Main Application Layout
-def main_layout():
-    fig_ml_comparison = go.Figure()
-    fig_ml_comparison.add_trace(go.Bar(
-        x=ml_results['النموذج'], y=ml_results['R²'], name='R² Score', marker_color='#0ea5e9',
-        text=ml_results['R²'].apply(lambda x: f'{x:.2%}'), textposition='outside',
-    ))
-    fig_ml_comparison.add_trace(go.Bar(
-        x=ml_results['النموذج'], y=ml_results['RMSE'] / 100000, name='RMSE (بالمئات الآلاف)', marker_color='#fbbf24',
-        text=ml_results['RMSE'].apply(lambda x: f'{x:,.0f}'), textposition='outside', yaxis='y2',
-    ))
-    fig_ml_comparison.update_layout(
-        title=dict(text="مقارنة أداء نماذج التعلم الآلي", font=dict(color="white", size=16)),
-        xaxis=dict(tickfont=dict(color="white")),
-        yaxis=dict(title=dict(text="R² Score", font=dict(color="white")), tickfont=dict(color="white"), range=[0, 1]),
-        yaxis2=dict(title=dict(text="RMSE", font=dict(color="#fbbf24")), tickfont=dict(color="#fbbf24"), overlaying="y", side="right"),
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(color="white")),
-        height=400, margin=dict(l=30, r=50, t=60, b=80), paper_bgcolor="#0f1830", plot_bgcolor="#0f1830", font=dict(color="white"), barmode='group',
-    )
-
-    fig_price_dist = px.histogram(ml_data, x='price', nbins=30, title="توزيع الأسعار في بيانات التدريب", color_discrete_sequence=['#22c55e'])
-    fig_price_dist.update_layout(paper_bgcolor="#0f1830", plot_bgcolor="#0f1830", font=dict(color="white"), height=300)
-
-    return html.Div(
-        dir="rtl",
-        style={"fontFamily": "Tajawal, Cairo, Arial, sans-serif", "background": "#0b1220", "color": "white", "minHeight": "100vh"},
-        children=[
-            dcc.Store(id="projects-store", data=prepare_dataframe(data).to_dict("records")),
-            dcc.Download(id="download-csv"),
-            dcc.Store(id="login-state", data="logged_in"),
-            
-            # Header
-            html.Div(
-                style={"padding": "18px 24px", "borderBottom": "1px solid rgba(255,255,255,0.08)"},
-                children=[
-                    html.Div(
-                        style={"display": "flex", "alignItems": "center", "justifyContent": "space-between", "gap": "16px", "flexWrap": "wrap"},
-                        children=[
-                            html.Div(children=[
-                                html.H2("📊 الموقف المالي لمستخلصات المشاريع 2026م", style={"margin": 0, "fontWeight": 800}),
-                                html.Div("متابعة المستخلصات المستحقة، المرفوعة، أوامر الدفع، والمستهدف رفعها (جدول تفاعلي قابل للتعديل المباشر)", style={"opacity": 0.85}),
-                            ]),
-                            html.Div(
-                                style={"display": "flex", "gap": "10px", "alignItems": "center"},
-                                children=[
-                                    dbc.Button("🚪 تسجيل خروج", id="logout-btn", color="danger", style={"fontWeight": "bold"}),
-                                    dbc.Button("➕ إضافة مشروع", id="add-project-btn", color="success", style={"fontWeight": "bold"}),
-                                    dbc.Button("🔄 تحديث الكل", id="refresh-all-btn", color="info", style={"fontWeight": "bold"}),
-                                ],
-                            ),
-                        ],
-                    )
-                ],
-            ),
-            
-            # Tabs
-            dbc.Tabs(
-                [
-                    dbc.Tab(label="📊 مستخلصات المشاريع", tab_id="tab-projects", active_label_style={"color": "#0ea5e9"}),
-                    dbc.Tab(label="🤖 تحليل النماذج (ML)", tab_id="tab-ml", active_label_style={"color": "#0ea5e9"}),
-                ],
-                id="tabs", active_tab="tab-projects", style={"padding": "0 24px", "borderBottom": "1px solid rgba(255,255,255,0.1)"},
-            ),
-            
-            # Tab 1: Projects
-            html.Div(id="tab-projects-content", children=[
-                # Filters
-                html.Div(
-                    style={"padding": "18px 24px"},
-                    children=[
-                        html.Div(
-                            style={"display": "grid", "gridTemplateColumns": "repeat(3, minmax(0, 1fr))", "gap": "14px"},
-                            children=[
-                                html.Div([html.Label("حالة المشروع", style={"opacity": 0.9, "marginBottom": 8}), dcc.Dropdown(id="filter-status", multi=True, className="dropdown-dark")]),
-                                html.Div([html.Label("القطاع / العميل", style={"opacity": 0.9, "marginBottom": 8}), dcc.Dropdown(id="filter-client", multi=True, className="dropdown-dark")]),
-                                html.Div([html.Label("بحث سريع", style={"opacity": 0.9, "marginBottom": 8}), dbc.Input(id="search-input", type="text", placeholder="بحث باسم المشروع...", style={"background": "#1a2332", "color": "white", "border": "1px solid rgba(255,255,255,0.1)"})]),
-                            ],
-                        )
-                    ],
-                ),
-                
-                # Dynamic KPI Cards
-                html.Div(
-                    style={"padding": "0 24px 18px 24px"},
-                    children=[
-                        html.Div(
-                            style={"display": "grid", "gridTemplateColumns": "repeat(4, minmax(0, 1fr))", "gap": "14px"},
-                            children=[
-                                html.Div(id="card-total-due"),
-                                html.Div(id="card-submitted-claims"),
-                                html.Div(id="card-payment-orders"),
-                                html.Div(id="card-targeted-claims"),
-                            ],
-                        )
-                    ],
-                ),
-
-                # Line Chart
-                html.Div(
-                    style={"padding": "0 24px 18px 24px"},
-                    children=[
-                        html.Div(
-                            style={"background": "#0f1830", "borderRadius": "12px", "padding": "16px", "border": "1px solid rgba(255,255,255,0.06)"},
-                            children=[
-                                html.Div(style={"fontWeight": 800, "fontSize": 18, "color": "white", "marginBottom": "10px"}, children="📈 مسار حركة المستخلصات بكل مشروع (تحديث تلقائي عند التعديل)"),
-                                dcc.Graph(id="claims-line-chart", style={"background": "#0f1830", "borderRadius": "12px"}),
-                            ],
-                        ),
-                    ],
-                ),
-
-                # Bar Chart & Gauges
-                html.Div(
-                    style={"padding": "0 24px 18px 24px"},
-                    children=[
-                        html.Div(
-                            style={"display": "grid", "gridTemplateColumns": "2fr 1fr", "gap": "14px"},
-                            children=[
-                                html.Div([
-                                    html.Div(style={"fontWeight": 800, "fontSize": 16, "marginBottom": 10}, children="مقارنة قيم المستخلصات للمشاريع"),
-                                    dcc.Graph(id="bar-comparison", style={"background": "#0f1830", "borderRadius": "12px", "padding": "8px"}),
-                                ]),
-                                html.Div([
-                                    html.Div(style={"fontWeight": 800, "fontSize": 16, "marginBottom": 10}, children="مؤشرات الإنجاز كـ % من المستحق"),
-                                    html.Div(style={"display": "grid", "gridTemplateColumns": "1fr", "gap": "14px"}, children=[
-                                        dcc.Graph(id="gauge-payment-orders", style={"background": "#0f1830", "borderRadius": "12px", "padding": "8px"}),
-                                        dcc.Graph(id="gauge-submitted", style={"background": "#0f1830", "borderRadius": "12px", "padding": "8px"}),
-                                    ]),
-                                ]),
-                            ],
-                        )
-                    ],
-                ),
-
-                # Editable Table
-                html.Div(
-                    style={"padding": "0 24px 40px 24px"},
-                    children=[
-                        html.Div(
-                            style={"display": "flex", "justifyContent": "space-between", "alignItems": "center", "marginBottom": 10},
-                            children=[
-                                html.Div(style={"fontWeight": 800, "fontSize": 16}, children="✏️ جدول المستخلصات (يمكنك التعديل المباشر على الأرقام في الخنايا أدناه)"),
-                                html.Div(style={"display": "flex", "gap": "10px"}, children=[
-                                    dbc.Button("📥 تصدير CSV", id="export-btn", color="secondary", size="sm"),
-                                    dbc.Button("🗑️ حذف المشروع المحدد", id="delete-selected-btn", color="danger", size="sm"),
-                                ]),
-                            ],
-                        ),
-                        dcc.Loading(children=[
-                            dash_table.DataTable(
-                                id="projects-table",
-                                editable=True,  # تمكين التعديل المباشر من الجدول
-                                row_deletable=True,
-                                style_table={"overflowX": "auto", "background": "#0f1830", "borderRadius": "12px"},
-                                style_cell={"textAlign": "right", "padding": "10px", "background": "#0f1830", "color": "white", "border": "1px solid rgba(255,255,255,0.06)", "fontFamily": "Tajawal, Cairo, Arial, sans-serif"},
-                                style_header={"background": "#0b142a", "fontWeight": "bold", "color": "white"},
-                                page_size=12,
-                                sort_action="native",
-                                row_selectable="single",
-                                columns=[
-                                    {"name": "المعرف", "id": "Project ID", "editable": False},
-                                    {"name": "المشروع", "id": "Project Name", "editable": True},
-                                    {"name": "القطاع / العميل", "id": "Client / Sector", "editable": True},
-                                    {"name": "المستخلصات المستحقة حتى النهاية", "id": "Total Due Amount", "type": "numeric", "editable": True},
-                                    {"name": "المستخلصات المرفوعة", "id": "Submitted Claims", "type": "numeric", "editable": True},
-                                    {"name": "صدر لها أمر دفع", "id": "Payment Orders Issued", "type": "numeric", "editable": True},
-                                    {"name": "مستهدف رفعها", "id": "Targeted Claims", "type": "numeric", "editable": True},
-                                    {"name": "% المرفوع", "id": "% Submitted_fmt", "editable": False},
-                                    {"name": "% أمر الدفع", "id": "% Payment Order_fmt", "editable": False},
-                                    {"name": "% المستهدف", "id": "% Targeted_fmt", "editable": False},
-                                ],
-                                data=[],
-                                style_data_conditional=[],
-                            )
-                        ]),
-                    ],
-                ),
-            ]),
-            
-            # Tab 2: ML
-            html.Div(id="tab-ml-content", style={"display": "none"}, children=[
-                html.Div(
-                    style={"padding": "18px 24px"},
-                    children=[
-                        html.Div(
-                            style={"background": "#0f1830", "borderRadius": "12px", "padding": "20px", "border": "1px solid rgba(255,255,255,0.06)"},
-                            children=[
-                                html.H4("🤖 تحليل أداء نماذج التعلم الآلي (ML)", style={"color": "white", "marginBottom": "15px"}),
-                                html.P("مقارنة أداء 7 نماذج رجوع للتنبؤ والتحليل المالي", style={"color": "rgba(255,255,255,0.7)"}),
-                            ],
-                        ),
-                    ],
-                ),
-                html.Div(
-                    style={"padding": "0 24px 18px 24px"},
-                    children=[
-                        html.Div(
-                            style={"display": "grid", "gridTemplateColumns": "2fr 1fr", "gap": "14px"},
-                            children=[
-                                html.Div(
-                                    style={"background": "#0f1830", "borderRadius": "12px", "padding": "16px", "border": "1px solid rgba(255,255,255,0.06)"},
-                                    children=[
-                                        html.Div(style={"fontWeight": 800, "fontSize": 16, "color": "white", "marginBottom": "10px"}, children="📊 مقارنة أداء النماذج"),
-                                        dcc.Graph(figure=fig_ml_comparison, style={"background": "#0f1830", "borderRadius": "12px"}),
-                                    ],
-                                ),
-                                html.Div(
-                                    style={"background": "#0f1830", "borderRadius": "12px", "padding": "16px", "border": "1px solid rgba(255,255,255,0.06)"},
-                                    children=[
-                                        html.Div(style={"fontWeight": 800, "fontSize": 16, "color": "white", "marginBottom": "10px"}, children="📈 توزيع بيانات التدريب"),
-                                        dcc.Graph(figure=fig_price_dist, style={"background": "#0f1830", "borderRadius": "12px"}),
-                                    ],
-                                ),
-                            ],
-                        ),
-                    ],
-                ),
-                html.Div(
-                    style={"padding": "0 24px 40px 24px"},
-                    children=[
-                        html.Div(
-                            style={"background": "#0f1830", "borderRadius": "12px", "padding": "16px", "border": "1px solid rgba(255,255,255,0.06)"},
-                            children=[
-                                html.Div(style={"fontWeight": 800, "fontSize": 16, "color": "white", "marginBottom": "10px"}, children="📋 جدول نتائج تقييم النماذج"),
-                                dash_table.DataTable(
-                                    id="ml-results-table",
-                                    columns=[
-                                        {"name": "النموذج", "id": "النموذج"},
-                                        {"name": "MSE", "id": "MSE"},
-                                        {"name": "RMSE", "id": "RMSE"},
-                                        {"name": "R² Score", "id": "R²"},
-                                    ],
-                                    data=ml_results.to_dict("records"),
-                                    style_table={"overflowX": "auto", "background": "#0f1830", "borderRadius": "12px"},
-                                    style_cell={"textAlign": "right", "padding": "10px", "background": "#0f1830", "color": "white", "border": "1px solid rgba(255,255,255,0.06)", "fontFamily": "Tajawal, Cairo, Arial, sans-serif"},
-                                    style_header={"background": "#0b142a", "fontWeight": "bold", "color": "white"},
-                                ),
-                            ],
-                        ),
-                    ],
-                ),
-            ]),
-            
-            # Modal Details
-            dbc.Modal(
-                [
-                    dbc.ModalHeader(dbc.ModalTitle("تفاصيل المستخلصات للمشروع"), close_button=True),
-                    dbc.ModalBody(id="project-detail-body"),
-                    dbc.ModalFooter([
-                        dbc.Button("إغلاق", id="detail-close", className="ms-auto", color="secondary"),
-                        dbc.Button("✏️ تعديل البيانات", id="open-edit-from-detail-btn", color="primary"),
-                    ]),
-                ],
-                id="project-detail-modal", size="lg",
-            ),
-            
-            project_modal,
-            
-            # Footer
-            html.Div(
-                style={"padding": "18px 24px", "opacity": 0.7, "borderTop": "1px solid rgba(255,255,255,0.08)", "display": "flex", "justifyContent": "space-between"},
-                children=[
-                    html.Div("© منصة الموقف المالي لمستخلصات المشاريع 2026م"),
-                    html.Div(id="footer-info", children=f"آخر تحديث: {datetime.now().strftime('%Y-%m-%d %H:%M')}"),
-                ],
-            ),
-            
-            html.Style("""
-                .card{background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02)); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 14px 16px; min-height: 90px; transition: all 0.3s ease;}
-                .card:hover{background: linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.04)); transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,0,0,0.3);}
-                .card-title{opacity:0.85; font-size:14px; font-weight:700; margin-bottom:10px}
-                .card-value{font-size:22px; font-weight:900}
-                .card-subtitle{opacity:0.8; margin-top:6px; font-size:13px}
-                .dropdown-dark .Select-control{background:#1a2332 !important; border-color:rgba(255,255,255,0.1) !important; color:white !important}
-                .dropdown-dark .Select-menu-outer{background:#1a2332 !important; border-color:rgba(255,255,255,0.1) !important}
-                .dropdown-dark .Select-option{background:#1a2332 !important; color:white !important}
-                .dropdown-dark .Select-option.is-selected{background:#0ea5e9 !important}
-                .dropdown-dark .Select-option:hover{background:#2a3a52 !important}
-                .dropdown-dark .Select-value-label{color:white !important}
-                .dropdown-dark .Select-input input{color:white !important}
-                .project-detail-card{background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); border-radius:12px; padding:14px; margin-bottom:10px}
-                .project-detail-card .label{opacity:0.7; font-size:12px}
-                .project-detail-card .value{font-size:16px; font-weight:bold; margin-top:4px}
-                .nav-tabs .nav-link{color: rgba(255,255,255,0.6) !important; border: none !important; padding: 12px 20px;}
-                .nav-tabs .nav-link.active{color: #0ea5e9 !important; background: transparent !important; border-bottom: 2px solid #0ea5e9 !important;}
-                .nav-tabs .nav-link:hover{color: white !important; background: rgba(255,255,255,0.05) !important;}
-            """),
-        ],
-    )
-
-# Router
-app.layout = html.Div([
-    dcc.Location(id="url", refresh=False),
-    dcc.Store(id="auth-store", data={"logged_in": False}),
-    html.Div(id="page-content")
-])
-
-@app.callback(
-    Output("page-content", "children"),
-    Output("auth-store", "data"),
-    Input("login-btn", "n_clicks"),
-    Input("logout-btn", "n_clicks"),
-    State("password-input", "value"),
-    State("auth-store", "data"),
-    prevent_initial_call=True,
-)
-def render_page(login_clicks, logout_clicks, password, auth_data):
-    ctx = callback_context
-    if not ctx.triggered:
-        return login_layout(), auth_data
-
-    trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
-
-    if trigger_id == "logout-btn":
-        return login_layout(), {"logged_in": False}
-
-    if trigger_id == "login-btn" and password:
-        if check_password(password):
-            return main_layout(), {"logged_in": True}
-        else:
-            return login_layout(), auth_data
-
-    if not auth_data.get("logged_in", False):
-        return login_layout(), auth_data
-
-    return main_layout(), auth_data
-
-@app.callback(
-    Output("tab-projects-content", "style"),
-    Output("tab-ml-content", "style"),
-    Input("tabs", "active_tab"),
-)
-def switch_tab(active_tab):
-    if active_tab == "tab-projects":
-        return {"display": "block"}, {"display": "none"}
-    else:
-        return {"display": "none"}, {"display": "block"}
-
-@app.callback(
-    Output("filter-status", "options"),
-    Output("filter-status", "value"),
-    Output("filter-client", "options"),
-    Output("filter-client", "value"),
-    Input("projects-store", "data"),
-)
-def sync_filter_options(store_data):
-    if not store_data:
-        return [], [], [], []
-    df = pd.DataFrame(store_data)
-    statuses = sorted(df["Status"].dropna().unique().tolist())
-    clients = sorted(df["Client / Sector"].dropna().unique().tolist())
-    return (
-        [{"label": s, "value": s} for s in statuses], statuses,
-        [{"label": c, "value": c} for c in clients], clients,
-    )
-
-def get_filtered_df(store_data, status_vals, client_vals, search):
-    if not store_data:
-        return pd.DataFrame(columns=cols)
-    df = pd.DataFrame(store_data)
-    if status_vals:
-        df = df[df["Status"].isin(status_vals)]
-    if client_vals:
-        df = df[df["Client / Sector"].isin(client_vals)]
-    if search:
-        df = df[df["Project Name"].str.contains(search, case=False, na=False)]
-    return df
-
-# Callback لمعالجة التعديلات المباشرة داخل الخلايا
-@app.callback(
-    Output("projects-store", "data", allow_duplicate=True),
-    Input("projects-table", "data"),
-    prevent_initial_call=True,
-)
-def handle_table_cell_edit(table_data):
-    if not table_data:
-        return dash.no_update
-    df = prepare_dataframe(table_data)
-    return df.to_dict("records")
-
-# Callback لتحديث الداشبورد والمخططات فور تغيير البيانات
-@app.callback(
-    Output("card-total-due", "children"),
-    Output("card-submitted-claims", "children"),
-    Output("card-payment-orders", "children"),
-    Output("card-targeted-claims", "children"),
-    Output("bar-comparison", "figure"),
-    Output("gauge-payment-orders", "figure"),
-    Output("gauge-submitted", "figure"),
-    Output("projects-table", "data"),
-    Output("projects-table", "style_data_conditional"),
-    Output("claims-line-chart", "figure"),
-    Input("projects-store", "data"),
-    Input("filter-status", "value"),
-    Input("filter-client", "value"),
-    Input("search-input", "value"),
-)
-def update_dashboard(store_data, status_vals, client_vals, search_term):
-    dff = get_filtered_df(store_data, status_vals, client_vals, search_term)
-
-    total_due = dff["Total Due Amount"].sum() if not dff.empty else 0
-    total_submitted = dff["Submitted Claims"].sum() if not dff.empty else 0
-    total_orders = dff["Payment Orders Issued"].sum() if not dff.empty else 0
-    total_targeted = dff["Targeted Claims"].sum() if not dff.empty else 0
-
-    cards = (
-        create_card("إجمالي المستخلصات المستحقة", fmt_money(total_due), "حتى نهاية شهر أغسطس 2026م", "💰", "#3b82f6"),
-        create_card("المستخلصات المرفوعة", fmt_money(total_submitted), "المستخلصات المرفوعة أغسطس", "📤", "#a855f7"),
-        create_card("صدر لها أمر دفع", fmt_money(total_orders), "أوامر الدفع الصادرة", "💳", "#22c55e"),
-        create_card("مستهدف رفعها", fmt_money(total_targeted), "المستهدف حتى نهاية أغسطس", "🎯", "#f59e0b"),
-    )
-
-    # Line Chart
-    fig_line = go.Figure()
-    if not dff.empty:
-        sorted_df = dff.sort_values("Project ID")
-        fig_line.add_trace(go.Scatter(name="المستحقة حتى النهاية", x=sorted_df["Project Name"], y=sorted_df["Total Due Amount"], mode="lines+markers", line=dict(color="#3b82f6", width=3), marker=dict(size=8)))
-        fig_line.add_trace(go.Scatter(name="مستهدف رفعها", x=sorted_df["Project Name"], y=sorted_df["Targeted Claims"], mode="lines+markers", line=dict(color="#f59e0b", width=3, dash="dot"), marker=dict(size=8)))
-        fig_line.add_trace(go.Scatter(name="صدر أمر دفع", x=sorted_df["Project Name"], y=sorted_df["Payment Orders Issued"], mode="lines+markers", line=dict(color="#22c55e", width=3, dash="dash"), marker=dict(size=8)))
-        fig_line.add_trace(go.Scatter(name="المرفوعة", x=sorted_df["Project Name"], y=sorted_df["Submitted Claims"], mode="lines+markers", line=dict(color="#a855f7", width=2), marker=dict(size=8)))
-
-    fig_line.update_layout(
-        title=dict(text="📊 مسار حركة المستخلصات لكل مشروع", font=dict(color="white", size=15)),
-        xaxis=dict(tickfont=dict(color="white", size=10), automargin=True, tickangle=-45),
-        yaxis=dict(title=dict(text="القيمة (ريال سعودي)", font=dict(color="white")), tickfont=dict(color="white"), tickprefix="SAR ", tickformat=",.0f"),
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(color="white")),
-        height=400, margin=dict(l=30, r=30, t=60, b=100), paper_bgcolor="#0f1830", plot_bgcolor="#0f1830", font=dict(color="white"), hovermode="x unified",
-    )
-
-    # Bar Chart
-    fig_bar = go.Figure()
-    if not dff.empty:
-        fig_bar.add_trace(go.Bar(name="المستحقة", y=dff["Project Name"], x=dff["Total Due Amount"], orientation="h", marker_color="#3b82f6"))
-        fig_bar.add_trace(go.Bar(name="مستهدف رفعها", y=dff["Project Name"], x=dff["Targeted Claims"], orientation="h", marker_color="#f59e0b"))
-        fig_bar.add_trace(go.Bar(name="صدر أمر دفع", y=dff["Project Name"], x=dff["Payment Orders Issued"], orientation="h", marker_color="#22c55e"))
-        fig_bar.add_trace(go.Bar(name="مرفوعة", y=dff["Project Name"], x=dff["Submitted Claims"], orientation="h", marker_color="#a855f7"))
-
-    fig_bar.update_layout(barmode="group", height=400, legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1), margin=dict(l=30, r=20, t=20, b=20), paper_bgcolor="#0f1830", plot_bgcolor="#0f1830", font=dict(color="white"))
-    fig_bar.update_yaxes(tickfont=dict(color="white"), automargin=True)
-    fig_bar.update_xaxes(tickfont=dict(color="white"), automargin=True)
-
-    # Gauges
-    pct_orders = (total_orders / total_due) * 100 if total_due != 0 else 0
-    pct_submitted = (total_submitted / total_due) * 100 if total_due != 0 else 0
-
-    fig_g1 = go.Figure(go.Indicator(mode="gauge+number", value=round(pct_orders, 1), number={"suffix": "%", "font": {"size": 22, "color": "white"}}, gauge={"axis": {"range": [0, 100]}, "bar": {"color": "#22c55e"}, "steps": [{"range": [0, 50], "color": "#1f2937"}, {"range": [50, 80], "color": "#0ea5e9"}, {"range": [80, 100], "color": "#22c55e"}]}, title={"text": "نسبة أوامر الدفع الصادرة", "font": {"color": "white", "size": 13}}))
-    fig_g1.update_layout(height=220, margin=dict(l=20, r=20, t=30, b=10), paper_bgcolor="#0f1830", font=dict(color="white"))
-
-    fig_g2 = go.Figure(go.Indicator(mode="gauge+number", value=round(pct_submitted, 1), number={"suffix": "%", "font": {"size": 22, "color": "white"}}, gauge={"axis": {"range": [0, 100]}, "bar": {"color": "#a855f7"}, "steps": [{"range": [0, 50], "color": "#1f2937"}, {"range": [50, 80], "color": "#3b82f6"}, {"range": [80, 100], "color": "#a855f7"}]}, title={"text": "نسبة المستخلصات المرفوعة", "font": {"color": "white", "size": 13}}))
-    fig_g2.update_layout(height=220, margin=dict(l=20, r=20, t=30, b=10), paper_bgcolor="#0f1830", font=dict(color="white"))
-
-    # Table Formatting
-    table_df = dff.copy()
-    if not table_df.empty:
-        table_df["% Submitted_fmt"] = table_df["% Submitted"].map(fmt_pct_from_ratio)
-        table_df["% Payment Order_fmt"] = table_df["% Payment Order"].map(fmt_pct_from_ratio)
-        table_df["% Targeted_fmt"] = table_df["% Targeted"].map(fmt_pct_from_ratio)
-        table_records = table_df.to_dict("records")
-    else:
-        table_records = []
-
-    style_conditional = [
-        {"if": {"filter_query": "{Payment Orders Issued} > 0", "column_id": "Payment Orders Issued"}, "backgroundColor": "rgba(34,197,94,0.18)", "color": "#4ade80", "fontWeight": "bold"},
-        {"if": {"filter_query": "{Targeted Claims} > 5000000", "column_id": "Targeted Claims"}, "backgroundColor": "rgba(245,158,11,0.18)", "color": "#fbbf24", "fontWeight": "bold"},
+# ============================================
+# 2. إدراج بيانات المشاريع الفعلية (أغسطس)
+# ============================================
+@st.cache_data
+def get_actual_projects_data():
+    raw_data = [
+        {
+            "id": 1,
+            "project_name": "تقديم الخدمات الاستشارية لدراسة تطوير خطط تشغيل و صيانة المرافق الهامة",
+            "total_due": 3237150.00,
+            "raised": 0.00,
+            "payment_order_issued": 2608200.00,
+            "target_raised": 628950.00
+        },
+        {
+            "id": 2,
+            "project_name": "الاشراف علي تصميم و انشاء المختبر البيطري المركزي",
+            "total_due": 789063.30,
+            "raised": 0.00,
+            "payment_order_issued": 394531.65,
+            "target_raised": 394531.65
+        },
+        {
+            "id": 3,
+            "project_name": "تقديم الخدمات الاستشارية للاشراف علي المشاريع الهندسية ببنك التنمية",
+            "total_due": 241500.00,
+            "raised": 241500.00,
+            "payment_order_issued": 0.00,
+            "target_raised": 0.00
+        },
+        {
+            "id": 4,
+            "project_name": "الاتفاقية الاطارية لخدمات الاشراف علي مشاريع إدارة المرافق بالمنطقة الوسطي",
+            "total_due": 20152734.68,
+            "raised": 0.00,
+            "payment_order_issued": 6343344.10,
+            "target_raised": 13809390.58
+        },
+        {
+            "id": 5,
+            "project_name": "الاشراف علي إدارة المرافق بالمنطقة الجنوبية",
+            "total_due": 4222488.43,
+            "raised": 0.00,
+            "payment_order_issued": 3222488.43,
+            "target_raised": 1000000.00
+        },
+        {
+            "id": 6,
+            "project_name": "الخدمات الاستشارية للاستفادة من المياه الجوفية و السطحية و مشاريع درء اخطار السيول",
+            "total_due": 4972625.00,
+            "raised": 1752600.00,
+            "payment_order_issued": 2187300.00,
+            "target_raised": 1032725.00
+        },
+        {
+            "id": 7,
+            "project_name": "الاتفاقية الاطارية لتصميم مشاريع المؤسسة العامة للري امر عمل (02)",
+            "total_due": 5398330.00,
+            "raised": 4508000.00,
+            "payment_order_issued": 0.00,
+            "target_raised": 890330.00
+        },
+        {
+            "id": 8,
+            "project_name": "ترميز مباني التراث المعماري وسط الرياض",
+            "total_due": 3910460.00,
+            "raised": 0.00,
+            "payment_order_issued": 0.00,
+            "target_raised": 3910460.00
+        },
+        {
+            "id": 9,
+            "project_name": "دراسة و تصميم مشروع انشاء قاعة الطعام بالمقر الرئيسي",
+            "total_due": 439875.00,
+            "raised": 439875.00,
+            "payment_order_issued": 0.00,
+            "target_raised": 0.00
+        },
+        {
+            "id": 10,
+            "project_name": "مبالغ تم دفعها للهندسية ولم يتم تحصيلها",
+            "total_due": 2864500.00,
+            "raised": 0.00,
+            "payment_order_issued": 0.00,
+            "target_raised": 2864500.00
+        },
+        {
+            "id": 11,
+            "project_name": "الاشراف علي المشاريع الصغيرة بجميع مناطق المملكة (المرحلة الثانية)",
+            "total_due": 2996034.00,
+            "raised": 0.00,
+            "payment_order_issued": 0.00,
+            "target_raised": 2996034.00
+        },
+        {
+            "id": 12,
+            "project_name": "الاتفاقية الاطارية لخدمات الاشراف علي مشاريع إدارة المرافق بالمنطقة الوسطي (2)",
+            "total_due": 3800000.00,
+            "raised": 0.00,
+            "payment_order_issued": 0.00,
+            "target_raised": 3800000.00
+        }
     ]
-
-    return cards[0], cards[1], cards[2], cards[3], fig_bar, fig_g1, fig_g2, table_records, style_conditional, fig_line
-
-@app.callback(
-    Output("project-detail-modal", "is_open"),
-    Output("project-detail-body", "children"),
-    Input("projects-table", "active_cell"),
-    Input("detail-close", "n_clicks"),
-    State("projects-table", "data"),
-    prevent_initial_call=True,
-)
-def toggle_project_detail(active_cell, close_clicks, table_data):
-    ctx = callback_context
-    if not ctx.triggered:
-        return False, ""
-    trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
-    if trigger_id == "detail-close":
-        return False, ""
-    if trigger_id == "projects-table" and active_cell and table_data:
-        row_idx = active_cell["row"]
-        if row_idx < len(table_data):
-            p = table_data[row_idx]
-            detail_view = html.Div([
-                html.Div(style={"display": "grid", "gridTemplateColumns": "1fr 1fr", "gap": "12px"}, children=[
-                    html.Div(className="project-detail-card", children=[html.Div(className="label", children="معرف المشروع"), html.Div(className="value", children=p.get("Project ID"))]),
-                    html.Div(className="project-detail-card", children=[html.Div(className="label", children="الحالة"), html.Div(className="value", children=p.get("Status"))]),
-                    html.Div(className="project-detail-card", children=[html.Div(className="label", children="اسم المشروع"), html.Div(className="value", children=p.get("Project Name"), style={"fontSize": "15px"})]),
-                    html.Div(className="project-detail-card", children=[html.Div(className="label", children="القطاع / العميل"), html.Div(className="value", children=p.get("Client / Sector"))]),
-                ]),
-                html.Div(style={"display": "grid", "gridTemplateColumns": "repeat(4, 1fr)", "gap": "10px", "marginTop": "10px"}, children=[
-                    html.Div(className="project-detail-card", children=[html.Div(className="label", children="المستحقة حتى النهاية"), html.Div(className="value", children=fmt_money(p.get("Total Due Amount")))]),
-                    html.Div(className="project-detail-card", children=[html.Div(className="label", children="المرفوعة"), html.Div(className="value", children=fmt_money(p.get("Submitted Claims")))]),
-                    html.Div(className="project-detail-card", children=[html.Div(className="label", children="صدر أمر دفع"), html.Div(className="value", children=fmt_money(p.get("Payment Orders Issued")))]),
-                    html.Div(className="project-detail-card", children=[html.Div(className="label", children="مستهدف رفعها"), html.Div(className="value", children=fmt_money(p.get("Targeted Claims")))]),
-                ]),
-            ])
-            return True, detail_view
-    return False, ""
-
-@app.callback(
-    Output("project-modal", "is_open"),
-    Output("modal-edit-mode", "data"),
-    Output("modal-project-id", "value"),
-    Output("modal-project-name", "value"),
-    Output("modal-client", "value"),
-    Output("modal-status", "value"),
-    Output("modal-total-due", "value"),
-    Output("modal-submitted-claims", "value"),
-    Output("modal-payment-orders", "value"),
-    Output("modal-targeted-claims", "value"),
-    Output("modal-message", "children"),
-    Input("add-project-btn", "n_clicks"),
-    Input("open-edit-from-detail-btn", "n_clicks"),
-    Input("modal-cancel", "n_clicks"),
-    State("projects-table", "active_cell"),
-    State("projects-table", "data"),
-    State("projects-store", "data"),
-    prevent_initial_call=True,
-)
-def control_project_modal(add_clicks, edit_clicks, cancel_clicks, active_cell, table_data, store_data):
-    ctx = callback_context
-    if not ctx.triggered:
-        return False, None, "", "", "", "قيد التنفيذ", None, None, None, None, ""
-    trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
-    if trigger_id == "add-project-btn":
-        max_num = 0
-        if store_data:
-            for row in store_data:
-                pid = str(row.get("Project ID", ""))
-                if pid.startswith("PRJ-"):
-                    try:
-                        val = int(pid.split("-")[1])
-                        if val > max_num:
-                            max_num = val
-                    except:
-                        pass
-        return True, None, f"PRJ-{max_num + 1:03d}", "", "", "قيد التنفيذ", 0, 0, 0, 0, ""
-    elif trigger_id == "open-edit-from-detail-btn" and active_cell and table_data:
-        row_idx = active_cell["row"]
-        if row_idx < len(table_data):
-            p = table_data[row_idx]
-            return True, p.get("Project ID"), p.get("Project ID"), p.get("Project Name"), p.get("Client / Sector"), p.get("Status"), p.get("Total Due Amount"), p.get("Submitted Claims"), p.get("Payment Orders Issued"), p.get("Targeted Claims"), ""
-    return False, None, "", "", "", "قيد التنفيذ", None, None, None, None, ""
-
-@app.callback(
-    Output("projects-store", "data"),
-    Output("project-modal", "is_open", allow_duplicate=True),
-    Output("modal-message", "children", allow_duplicate=True),
-    Input("modal-save", "n_clicks"),
-    State("modal-edit-mode", "data"),
-    State("modal-project-id", "value"),
-    State("modal-project-name", "value"),
-    State("modal-client", "value"),
-    State("modal-status", "value"),
-    State("modal-total-due", "value"),
-    State("modal-submitted-claims", "value"),
-    State("modal-payment-orders", "value"),
-    State("modal-targeted-claims", "value"),
-    State("projects-store", "data"),
-    prevent_initial_call=True,
-)
-def save_project_to_store(n_clicks, edit_id, project_id, name, client, status, total_due, submitted, orders, targeted, store_data):
-    if not n_clicks:
-        return dash.no_update, dash.no_update, dash.no_update
-    if not project_id or not name or not client:
-        return dash.no_update, True, "⚠️ يرجى ملء الحقول الإلزامية (المعرف، الاسم، العميل)"
-    df = pd.DataFrame(store_data) if store_data else pd.DataFrame()
+    df = pd.DataFrame(raw_data)
     
-    total_due_val = float(total_due or 0)
-    submitted_val = float(submitted or 0)
-    orders_val = float(orders or 0)
-    targeted_val = float(targeted or 0)
+    # تحديد حالة المستخلص للمشروع
+    def classify_status(row):
+        if row['payment_order_issued'] >= row['total_due'] and row['total_due'] > 0:
+            return 'صرف كامل'
+        elif row['payment_order_issued'] > 0:
+            return 'صرف جزئي'
+        elif row['raised'] > 0:
+            return 'مرفوع حالياً'
+        else:
+            return 'بانتظار الرفع'
+            
+    df['status'] = df.apply(classify_status, axis=1)
+    return df
 
-    new_row = {
-        "Project ID": project_id,
-        "Project Name": name,
-        "Client / Sector": client,
-        "Status": status,
-        "Total Due Amount": total_due_val,
-        "Submitted Claims": submitted_val,
-        "Payment Orders Issued": orders_val,
-        "Targeted Claims": targeted_val,
-        "% Submitted": submitted_val / total_due_val if total_due_val != 0 else 0,
-        "% Payment Order": orders_val / total_due_val if total_due_val != 0 else 0,
-        "% Targeted": targeted_val / total_due_val if total_due_val != 0 else 0,
-    }
-    if edit_id:
-        df = df[df["Project ID"] != edit_id]
-    df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
-    return df.to_dict("records"), False, ""
 
-@app.callback(
-    Output("projects-store", "data", allow_duplicate=True),
-    Input("delete-selected-btn", "n_clicks"),
-    State("projects-table", "active_cell"),
-    State("projects-table", "data"),
-    State("projects-store", "data"),
-    prevent_initial_call=True,
-)
-def delete_selected_project(n_clicks, active_cell, table_data, store_data):
-    if not n_clicks or not active_cell or not table_data:
-        return dash.no_update
-    row_idx = active_cell["row"]
-    if row_idx < len(table_data):
-        target_id = table_data[row_idx].get("Project ID")
-        df = pd.DataFrame(store_data)
-        df = df[df["Project ID"] != target_id]
-        return df.to_dict("records")
-    return dash.no_update
+def load_data(uploaded_file):
+    if uploaded_file is not None:
+        try:
+            df = pd.read_excel(uploaded_file, skiprows=3, usecols="B:F", nrows=12)
+            df.columns = ['project_name', 'total_due', 'raised', 'payment_order_issued', 'target_raised']
+            df['id'] = range(1, len(df) + 1)
+            df = df.fillna(0)
+            return df
+        except Exception:
+            pass
+    return get_actual_projects_data()
 
-@app.callback(
-    Output("download-csv", "data"),
-    Input("export-btn", "n_clicks"),
-    State("projects-store", "data"),
-    prevent_initial_call=True,
-)
-def export_csv(n_clicks, store_data):
-    if not n_clicks or not store_data:
-        return dash.no_update
-    df = pd.DataFrame(store_data)
-    return dcc.send_data_frame(df.to_csv, "project_claims_2026.csv", index=False, encoding="utf-8-sig")
 
-@app.callback(
-    Output("projects-store", "data", allow_duplicate=True),
-    Input("refresh-all-btn", "n_clicks"),
-    State("projects-store", "data"),
-    prevent_initial_call=True,
-)
-def refresh_all_store(n_clicks, store_data):
-    if not n_clicks or not store_data:
-        return dash.no_update
-    df = prepare_dataframe(store_data)
-    return df.to_dict("records")
+# ============================================
+# 3. التطبيق الرئيسي
+# ============================================
+def main():
+    st.sidebar.title("⚙️ خيارات الفلترة والتصدير")
+    st.sidebar.markdown("---")
+    
+    uploaded_file = st.sidebar.file_uploader("📂 رفع ملف Excel مُحدث (اختياري)", type=["xlsx", "xls"])
+    df = load_data(uploaded_file)
 
-# ================================================================
-# 10. تشغيل التطبيق
-# ================================================================
+    # فلاتر البحث
+    search_query = st.sidebar.text_input("🔍 بحث باسم المشروع:")
+    selected_statuses = st.sidebar.multiselect(
+        "حالة المستخلصات:",
+        options=df['status'].unique(),
+        default=df['status'].unique()
+    )
+
+    filtered_df = df[df['status'].isin(selected_statuses)]
+    if search_query:
+        filtered_df = filtered_df[filtered_df['project_name'].str.contains(search_query, case=False)]
+
+    if filtered_df.empty:
+        st.warning("⚠️ لا توجد مشاريع تطابق الفلاتر المحددة.")
+        return
+
+    # حساب المجاميع العامة
+    total_due = filtered_df['total_due'].sum()
+    total_raised = filtered_df['raised'].sum()
+    total_paid = filtered_df['payment_order_issued'].sum()
+    total_target = filtered_df['target_raised'].sum()
+
+    paid_pct = (total_paid / total_due * 100) if total_due > 0 else 0
+    raised_pct = (total_raised / total_due * 100) if total_due > 0 else 0
+    target_pct = (total_target / total_due * 100) if total_due > 0 else 0
+
+    # الهيدر الرئيسي
+    col_head1, col_head2 = st.columns([3, 1])
+    with col_head1:
+        st.title("📊 لوحة مستخلصات أداء المشاريع - أغسطس")
+        st.caption("متابعة المستخلصات المستحقة، المرفوعة، وأوامر الدفع الصادرة")
+    with col_head2:
+        st.markdown(f"**🗓️ الفترة:** حتى نهاية أغسطس\n\n**🔄 التحديث:** `{datetime.now().strftime('%Y-%m-%d')}`")
+
+    st.markdown("---")
+
+    # ============================================
+    # 4. بطاقات KPI
+    # ============================================
+    kpi1, kpi2, kpi3, kpi4 = st.columns(4)
+    
+    kpi1.metric("💰 إجمالي المستحق", f"{total_due:,.2f} ﷼")
+    kpi2.metric("💳 صدر لها أمر دفع", f"{total_paid:,.2f} ﷼", delta=f"{paid_pct:.1f}% من المستحق")
+    kpi3.metric("📤 مستخلصات مرفوعة", f"{total_raised:,.2f} ﷼", delta=f"{raised_pct:.1f}% من المستحق")
+    kpi4.metric("🎯 مستهدف رفعها", f"{total_target:,.2f} ﷼", delta=f"{target_pct:.1f}% من المستحق", delta_color="inverse")
+
+    st.markdown("---")
+
+    # ============================================
+    # 5. الرسوم البيانية الرئيسية
+    # ============================================
+    col_c1, col_c2 = st.columns([2, 1])
+
+    with col_c1:
+        st.subheader("📊 تفاصيل المستخلصات لكل مشروع")
+        
+        # تجهيز البيانات للرسم التجميعي
+        melted_df = filtered_df.melt(
+            id_vars=['project_name'],
+            value_vars=['payment_order_issued', 'raised', 'target_raised'],
+            var_name='Category',
+            value_name='Amount'
+        )
+        
+        category_map = {
+            'payment_order_issued': 'صدر له أمر دفع',
+            'raised': 'مرفوع حالياً',
+            'target_raised': 'مستهدف رفعه'
+        }
+        melted_df['Category'] = melted_df['Category'].map(category_map)
+        
+        fig_bar = px.bar(
+            melted_df,
+            x='Amount',
+            y='project_name',
+            color='Category',
+            orientation='h',
+            barmode='stack',
+            labels={'Amount': 'المبلغ (ريال)', 'project_name': 'المشروع', 'Category': 'الحالة'},
+            color_discrete_map={
+                'صدر له أمر دفع': '#10b981',
+                'مرفوع حالياً': '#3b82f6',
+                'مستهدف رفعه': '#f59e0b'
+            }
+        )
+        fig_bar.update_layout(
+            height=450,
+            font=dict(family="Cairo"),
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+            margin=dict(l=0, r=0, t=30, b=0)
+        )
+        st.plotly_chart(fig_bar, use_container_width=True)
+
+    with col_c2:
+        st.subheader("🎯 النسبة الإجمالية لحالة المبالغ")
+        
+        summary_pie = pd.DataFrame({
+            'الحالة': ['صدر له أمر دفع', 'مرفوع حالياً', 'مستهدف رفعه'],
+            'المبلغ': [total_paid, total_raised, total_target]
+        })
+        
+        fig_pie = px.pie(
+            summary_pie,
+            values='المبلغ',
+            names='الحالة',
+            hole=0.45,
+            color='الحالة',
+            color_discrete_map={
+                'صدر له أمر دفع': '#10b981',
+                'مرفوع حالياً': '#3b82f6',
+                'مستهدف رفعه': '#f59e0b'
+            }
+        )
+        fig_pie.update_traces(textinfo='percent+label')
+        fig_pie.update_layout(
+            height=450,
+            font=dict(family="Cairo"),
+            showlegend=False
+        )
+        st.plotly_chart(fig_pie, use_container_width=True)
+
+    # ============================================
+    # 6. الرسوم البيانية الفرعية
+    # ============================================
+    col_c3, col_c4 = st.columns(2)
+
+    with col_c3:
+        st.subheader("🏆 أكبر 5 مشاريع استحقاقاً")
+        top5 = filtered_df.nlargest(5, 'total_due')
+        fig_top5 = px.bar(
+            top5,
+            x='total_due',
+            y='project_name',
+            orientation='h',
+            text_auto=',.0f',
+            color='total_due',
+            color_continuous_scale='Blues',
+            labels={'total_due': 'المستحق (ريال)', 'project_name': ''}
+        )
+        fig_top5.update_layout(height=320, font=dict(family="Cairo"), showlegend=False, coloraxis_showscale=False)
+        st.plotly_chart(fig_top5, use_container_width=True)
+
+    with col_c4:
+        st.subheader("📌 توزيع المشاريع حسب حالة الصرف")
+        status_df = filtered_df['status'].value_counts().reset_index()
+        status_df.columns = ['الحالة', 'عدد المشاريع']
+        
+        fig_status = px.bar(
+            status_df,
+            x='الحالة',
+            y='عدد المشاريع',
+            color='الحالة',
+            text_auto=True,
+            color_discrete_map={'صرف جزئي': '#10b981', 'مرفوع حالياً': '#3b82f6', 'بانتظار الرفع': '#f59e0b', 'صرف كامل': '#059669'}
+        )
+        fig_status.update_layout(height=320, font=dict(family="Cairo"), showlegend=False)
+        st.plotly_chart(fig_status, use_container_width=True)
+
+    # ============================================
+    # 7. الجدول التفصيلي الكامل
+    # ============================================
+    st.markdown("---")
+    st.subheader("📋 جدول المستخلصات التفصيلي للمشاريع")
+
+    table_df = filtered_df[['id', 'project_name', 'total_due', 'raised', 'payment_order_issued', 'target_raised', 'status']].copy()
+    
+    st.dataframe(
+        table_df,
+        use_container_width=True,
+        hide_index=True,
+        column_config={
+            "id": st.column_config.Column("م", width="small"),
+            "project_name": st.column_config.Column("المشروع", width="large"),
+            "total_due": st.column_config.NumberColumn("المستحق حتى نهاية أغسطس", format="%.2f ﷼"),
+            "raised": st.column_config.NumberColumn("المستخلصات المرفوعة", format="%.2f ﷼"),
+            "payment_order_issued": st.column_config.NumberColumn("صدر لها أمر دفع", format="%.2f ﷼"),
+            "target_raised": st.column_config.NumberColumn("مستهدف رفعها", format="%.2f ﷼"),
+            "status": st.column_config.Column("حالة المشروع")
+        }
+    )
+
+    # ============================================
+    # 8. تصدير البيانات
+    # ============================================
+    st.sidebar.markdown("---")
+    st.sidebar.download_button(
+        label="📥 تحميل تقرير المستخلصات (CSV)",
+        data=filtered_df.to_csv(index=False).encode('utf-8-sig'),
+        file_name=f"August_Projects_Financial_Report_{datetime.now().strftime('%Y%m%d')}.csv",
+        mime="text/csv"
+    )
+
 if __name__ == "__main__":
-    app.run_server(host="0.0.0.0", port=8050, debug=True)
+    main()
