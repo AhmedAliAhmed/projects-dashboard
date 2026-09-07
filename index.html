@@ -29,7 +29,7 @@ def check_password(password):
     return hashlib.sha256(password.encode()).hexdigest() == PASSWORD_HASH
 
 # -----------------------------
-# 1. البيانات المحدثة طِبقاً لجدول الموقف المالي لمستخلصات المشاريع 2026م
+# 1. البيانات الأولية لمستخلصات المشاريع 2026م (يمكنك تغيير الأرقام هنا أيضاً)
 # -----------------------------
 data = [
     ["PRJ-001", "تقديم الخدمات الاستشارية لدراسة تطوير خطط تشغيل و صيانة المرافق الهامة", "وزارة البيئة و المياه و الزراعة", "قيد التنفيذ", 628950.00, 0.00, 0.00, 628950.00],
@@ -62,7 +62,7 @@ def prepare_dataframe(raw_data):
         if c in df.columns:
             df[c] = pd.to_numeric(df[c], errors="coerce").fillna(0)
 
-    # حساب النسب المئوية
+    # إعادة حساب النسب المئوية تلقائياً
     df["% Submitted"] = (df["Submitted Claims"] / df["Total Due Amount"].replace({0: pd.NA})).fillna(0)
     df["% Payment Order"] = (df["Payment Orders Issued"] / df["Total Due Amount"].replace({0: pd.NA})).fillna(0)
     df["% Targeted"] = (df["Targeted Claims"] / df["Total Due Amount"].replace({0: pd.NA})).fillna(0)
@@ -263,7 +263,7 @@ def main_layout():
                         children=[
                             html.Div(children=[
                                 html.H2("📊 الموقف المالي لمستخلصات المشاريع 2026م", style={"margin": 0, "fontWeight": 800}),
-                                html.Div("متابعة المستخلصات المستحقة، المرفوعة، أوامر الدفع، والمستهدف رفعها حتى نهاية شهر أغسطس", style={"opacity": 0.85}),
+                                html.Div("متابعة المستخلصات المستحقة، المرفوعة، أوامر الدفع، والمستهدف رفعها (جدول تفاعلي قابل للتعديل المباشر)", style={"opacity": 0.85}),
                             ]),
                             html.Div(
                                 style={"display": "flex", "gap": "10px", "alignItems": "center"},
@@ -327,7 +327,7 @@ def main_layout():
                         html.Div(
                             style={"background": "#0f1830", "borderRadius": "12px", "padding": "16px", "border": "1px solid rgba(255,255,255,0.06)"},
                             children=[
-                                html.Div(style={"fontWeight": 800, "fontSize": 18, "color": "white", "marginBottom": "10px"}, children="📈 مسار حركة المستخلصات بكل مشروع (2026م)"),
+                                html.Div(style={"fontWeight": 800, "fontSize": 18, "color": "white", "marginBottom": "10px"}, children="📈 مسار حركة المستخلصات بكل مشروع (تحديث تلقائي عند التعديل)"),
                                 dcc.Graph(id="claims-line-chart", style={"background": "#0f1830", "borderRadius": "12px"}),
                             ],
                         ),
@@ -357,14 +357,14 @@ def main_layout():
                     ],
                 ),
 
-                # Table
+                # Editable Table
                 html.Div(
                     style={"padding": "0 24px 40px 24px"},
                     children=[
                         html.Div(
                             style={"display": "flex", "justifyContent": "space-between", "alignItems": "center", "marginBottom": 10},
                             children=[
-                                html.Div(style={"fontWeight": 800, "fontSize": 16}, children="📋 جدول الموقف المالي لمستخلصات المشاريع (نهاية أغسطس 2026م)"),
+                                html.Div(style={"fontWeight": 800, "fontSize": 16}, children="✏️ جدول المستخلصات (يمكنك التعديل المباشر على الأرقام في الخنايا أدناه)"),
                                 html.Div(style={"display": "flex", "gap": "10px"}, children=[
                                     dbc.Button("📥 تصدير CSV", id="export-btn", color="secondary", size="sm"),
                                     dbc.Button("🗑️ حذف المشروع المحدد", id="delete-selected-btn", color="danger", size="sm"),
@@ -374,6 +374,8 @@ def main_layout():
                         dcc.Loading(children=[
                             dash_table.DataTable(
                                 id="projects-table",
+                                editable=True,  # تمكين التعديل المباشر من الجدول
+                                row_deletable=True,
                                 style_table={"overflowX": "auto", "background": "#0f1830", "borderRadius": "12px"},
                                 style_cell={"textAlign": "right", "padding": "10px", "background": "#0f1830", "color": "white", "border": "1px solid rgba(255,255,255,0.06)", "fontFamily": "Tajawal, Cairo, Arial, sans-serif"},
                                 style_header={"background": "#0b142a", "fontWeight": "bold", "color": "white"},
@@ -381,16 +383,16 @@ def main_layout():
                                 sort_action="native",
                                 row_selectable="single",
                                 columns=[
-                                    {"name": "المعرف", "id": "Project ID"},
-                                    {"name": "المشروع", "id": "Project Name"},
-                                    {"name": "القطاع / العميل", "id": "Client / Sector"},
-                                    {"name": "المستخلصات المستحقة حتى النهاية", "id": "Total Due Amount_fmt"},
-                                    {"name": "المستخلصات المرفوعة", "id": "Submitted Claims_fmt"},
-                                    {"name": "صدر لها أمر دفع", "id": "Payment Orders Issued_fmt"},
-                                    {"name": "مستهدف رفعها", "id": "Targeted Claims_fmt"},
-                                    {"name": "% المرفوع", "id": "% Submitted_fmt"},
-                                    {"name": "% أمر الدفع", "id": "% Payment Order_fmt"},
-                                    {"name": "% المستهدف", "id": "% Targeted_fmt"},
+                                    {"name": "المعرف", "id": "Project ID", "editable": False},
+                                    {"name": "المشروع", "id": "Project Name", "editable": True},
+                                    {"name": "القطاع / العميل", "id": "Client / Sector", "editable": True},
+                                    {"name": "المستخلصات المستحقة حتى النهاية", "id": "Total Due Amount", "type": "numeric", "editable": True},
+                                    {"name": "المستخلصات المرفوعة", "id": "Submitted Claims", "type": "numeric", "editable": True},
+                                    {"name": "صدر لها أمر دفع", "id": "Payment Orders Issued", "type": "numeric", "editable": True},
+                                    {"name": "مستهدف رفعها", "id": "Targeted Claims", "type": "numeric", "editable": True},
+                                    {"name": "% المرفوع", "id": "% Submitted_fmt", "editable": False},
+                                    {"name": "% أمر الدفع", "id": "% Payment Order_fmt", "editable": False},
+                                    {"name": "% المستهدف", "id": "% Targeted_fmt", "editable": False},
                                 ],
                                 data=[],
                                 style_data_conditional=[],
@@ -511,7 +513,7 @@ def main_layout():
         ],
     )
 
-# App Layout Router
+# Router
 app.layout = html.Div([
     dcc.Location(id="url", refresh=False),
     dcc.Store(id="auth-store", data={"logged_in": False}),
@@ -589,6 +591,19 @@ def get_filtered_df(store_data, status_vals, client_vals, search):
         df = df[df["Project Name"].str.contains(search, case=False, na=False)]
     return df
 
+# Callback لمعالجة التعديلات المباشرة داخل الخلايا
+@app.callback(
+    Output("projects-store", "data", allow_duplicate=True),
+    Input("projects-table", "data"),
+    prevent_initial_call=True,
+)
+def handle_table_cell_edit(table_data):
+    if not table_data:
+        return dash.no_update
+    df = prepare_dataframe(table_data)
+    return df.to_dict("records")
+
+# Callback لتحديث الداشبورد والمخططات فور تغيير البيانات
 @app.callback(
     Output("card-total-due", "children"),
     Output("card-submitted-claims", "children"),
@@ -662,10 +677,6 @@ def update_dashboard(store_data, status_vals, client_vals, search_term):
     # Table Formatting
     table_df = dff.copy()
     if not table_df.empty:
-        table_df["Total Due Amount_fmt"] = table_df["Total Due Amount"].map(fmt_money)
-        table_df["Submitted Claims_fmt"] = table_df["Submitted Claims"].map(fmt_money)
-        table_df["Payment Orders Issued_fmt"] = table_df["Payment Orders Issued"].map(fmt_money)
-        table_df["Targeted Claims_fmt"] = table_df["Targeted Claims"].map(fmt_money)
         table_df["% Submitted_fmt"] = table_df["% Submitted"].map(fmt_pct_from_ratio)
         table_df["% Payment Order_fmt"] = table_df["% Payment Order"].map(fmt_pct_from_ratio)
         table_df["% Targeted_fmt"] = table_df["% Targeted"].map(fmt_pct_from_ratio)
@@ -674,8 +685,8 @@ def update_dashboard(store_data, status_vals, client_vals, search_term):
         table_records = []
 
     style_conditional = [
-        {"if": {"filter_query": "{Payment Orders Issued} > 0", "column_id": "Payment Orders Issued_fmt"}, "backgroundColor": "rgba(34,197,94,0.18)", "color": "#4ade80", "fontWeight": "bold"},
-        {"if": {"filter_query": "{Targeted Claims} > 5000000", "column_id": "Targeted Claims_fmt"}, "backgroundColor": "rgba(245,158,11,0.18)", "color": "#fbbf24", "fontWeight": "bold"},
+        {"if": {"filter_query": "{Payment Orders Issued} > 0", "column_id": "Payment Orders Issued"}, "backgroundColor": "rgba(34,197,94,0.18)", "color": "#4ade80", "fontWeight": "bold"},
+        {"if": {"filter_query": "{Targeted Claims} > 5000000", "column_id": "Targeted Claims"}, "backgroundColor": "rgba(245,158,11,0.18)", "color": "#fbbf24", "fontWeight": "bold"},
     ]
 
     return cards[0], cards[1], cards[2], cards[3], fig_bar, fig_g1, fig_g2, table_records, style_conditional, fig_line
@@ -707,10 +718,10 @@ def toggle_project_detail(active_cell, close_clicks, table_data):
                     html.Div(className="project-detail-card", children=[html.Div(className="label", children="القطاع / العميل"), html.Div(className="value", children=p.get("Client / Sector"))]),
                 ]),
                 html.Div(style={"display": "grid", "gridTemplateColumns": "repeat(4, 1fr)", "gap": "10px", "marginTop": "10px"}, children=[
-                    html.Div(className="project-detail-card", children=[html.Div(className="label", children="المستحقة حتى النهاية"), html.Div(className="value", children=p.get("Total Due Amount_fmt"))]),
-                    html.Div(className="project-detail-card", children=[html.Div(className="label", children="المرفوعة"), html.Div(className="value", children=p.get("Submitted Claims_fmt"))]),
-                    html.Div(className="project-detail-card", children=[html.Div(className="label", children="صدر أمر دفع"), html.Div(className="value", children=p.get("Payment Orders Issued_fmt"))]),
-                    html.Div(className="project-detail-card", children=[html.Div(className="label", children="مستهدف رفعها"), html.Div(className="value", children=p.get("Targeted Claims_fmt"))]),
+                    html.Div(className="project-detail-card", children=[html.Div(className="label", children="المستحقة حتى النهاية"), html.Div(className="value", children=fmt_money(p.get("Total Due Amount")))]),
+                    html.Div(className="project-detail-card", children=[html.Div(className="label", children="المرفوعة"), html.Div(className="value", children=fmt_money(p.get("Submitted Claims")))]),
+                    html.Div(className="project-detail-card", children=[html.Div(className="label", children="صدر أمر دفع"), html.Div(className="value", children=fmt_money(p.get("Payment Orders Issued")))]),
+                    html.Div(className="project-detail-card", children=[html.Div(className="label", children="مستهدف رفعها"), html.Div(className="value", children=fmt_money(p.get("Targeted Claims")))]),
                 ]),
             ])
             return True, detail_view
